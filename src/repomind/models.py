@@ -284,3 +284,43 @@ class RunUsage(BaseModel):
     @property
     def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
+
+
+# --------------------------------------------------------------------------- #
+# Q&A (Phase 3)
+# --------------------------------------------------------------------------- #
+
+
+class SearchPlan(BaseModel):
+    """How the Q&A node intends to find an answer before it reads anything."""
+
+    queries: list[str] = Field(
+        default_factory=list, description="Literal symbols or phrases to grep for"
+    )
+    files: list[str] = Field(
+        default_factory=list, description="Paths worth opening based on the listing alone"
+    )
+    reasoning: str = ""
+
+
+class Citation(BaseModel):
+    """Where an answer came from. An answer without one is an opinion."""
+
+    path: str
+    line_number: int | None = None
+    excerpt: str = ""
+    verified: bool = False
+
+
+class QAAnswer(BaseModel):
+    question: str = ""
+    answer: str
+    citations: list[Citation] = Field(default_factory=list)
+    confident: bool = True
+    files_consulted: list[str] = Field(default_factory=list)
+    searches_run: list[str] = Field(default_factory=list)
+
+    @property
+    def is_grounded(self) -> bool:
+        """True when at least one citation survived verification."""
+        return any(c.verified for c in self.citations)
