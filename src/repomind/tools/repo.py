@@ -154,6 +154,18 @@ SECRET_FILENAMES = frozenset(
 )
 SECRET_SUFFIXES = frozenset({".pem", ".key", ".p12", ".pfx", ".keystore", ".jks"})
 
+# Templates that exist precisely to be committed: they hold key NAMES, not keys.
+# Filtering these hid the repo's own setup instructions from the agent.
+SECRET_EXCEPTIONS = frozenset(
+    {
+        ".env.example",
+        ".env.sample",
+        ".env.template",
+        ".env.dist",
+        ".env.defaults",
+    }
+)
+
 MAX_FILE_BYTES = 512_000  # ~500 KB; anything larger is vendored or generated
 MAX_LINE_CHARS = 2_000  # a longer "line" means minified
 
@@ -218,6 +230,8 @@ class RepoContext:
     def is_secret(path: Path) -> bool:
         """Credential-shaped files: refused by name before anything opens them."""
         name = path.name
+        if name in SECRET_EXCEPTIONS:
+            return False
         return (
             name in SECRET_FILENAMES
             or name.startswith(".env.")

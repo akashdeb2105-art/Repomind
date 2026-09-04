@@ -62,19 +62,14 @@ class Evidence:
         and rejecting a real file over a backslash would make the Critic
         useless through false positives.
         """
-        needle = normalise_path(path)
-        if not needle:
-            return False
-        return any(normalise_path(known) == needle for known in self.listed_paths)
+        return _matches(path, self.listed_paths)
 
     def has_read(self, path: str) -> bool:
-        needle = normalise_path(path)
-        return any(normalise_path(known) == needle for known in self.read_paths)
+        return _matches(path, self.read_paths)
 
     def is_file(self, path: str) -> bool:
         """True only for paths a tool saw as an actual file, not a directory."""
-        needle = normalise_path(path)
-        return any(normalise_path(known) == needle for known in self.file_paths)
+        return _matches(path, self.file_paths)
 
     def has_dependency(self, name: str) -> bool:
         return name.strip().lower() in self.dependencies
@@ -93,6 +88,27 @@ class Evidence:
             f"files read: {len(self.read_paths)}\n"
             f"dependencies parsed: {len(self.dependencies)}"
         )
+
+
+def _matches(path: str, known_paths: set[str]) -> bool:
+    """Exact match, or a suffix match on whole path segments.
+
+    Documents abbreviate. A model writes `run_agent.py` for what the tools
+    recorded as `scripts/run_agent.py`, and `repomind/agent/graph.py` for
+    `src/repomind/agent/graph.py`. Those name real files; treating them as
+    fabrications produced eleven false accusations in one run.
+
+    Segment-anchored so it stays strict: `agent.py` never matches
+    `my_agent.py`, and a path that names no real file is still caught.
+    """
+    needle = normalise_path(path)
+    if not needle:
+        return False
+    for known in known_paths:
+        normalised = normalise_path(known)
+        if normalised == needle or normalised.endswith("/" + needle):
+            return True
+    return False
 
 
 def normalise_path(path: str) -> str:

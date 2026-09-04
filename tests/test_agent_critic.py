@@ -230,3 +230,36 @@ def test_a_real_path_beside_shorthand_is_still_checked():
 
     assert [c.target for c in claims] == ["src/sample/ghost.py"]
     assert claims[0].grounded is False
+
+
+# --------------------------------------------------------------------------- #
+# Abbreviated paths: documents shorten, and shortening is not lying
+# --------------------------------------------------------------------------- #
+
+
+def test_an_abbreviated_path_is_recognised():
+    """`run_agent.py` names the file the tools recorded as `scripts/run_agent.py`."""
+    evidence = Evidence()
+    evidence.record_listing(["scripts/run_agent.py", "src/repomind/agent/graph.py"])
+
+    assert evidence.knows_path("run_agent.py")
+    assert evidence.knows_path("repomind/agent/graph.py")
+    assert evidence.knows_path("agent/graph.py")
+
+
+def test_suffix_matching_stays_anchored_to_path_segments():
+    """The looser rule must not turn into 'endswith', which grounds anything."""
+    evidence = Evidence()
+    evidence.record_listing(["src/my_agent.py"])
+
+    assert evidence.knows_path("src/my_agent.py")
+    assert not evidence.knows_path("agent.py"), "must not match mid-segment"
+    assert not evidence.knows_path("other/my_agent.py"), "wrong parent is still wrong"
+
+
+def test_a_genuinely_invented_file_is_still_caught():
+    evidence = Evidence()
+    evidence.record_listing(["scripts/run_agent.py"])
+
+    assert not evidence.knows_path("scripts/deploy.py")
+    assert not evidence.knows_path("database.py")

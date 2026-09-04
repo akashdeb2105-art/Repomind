@@ -93,7 +93,10 @@ def make_explorer(repo: RepoContext, router: LLMRouter) -> Node:
     def explorer(state: AgentState) -> AgentState:
         evidence: Evidence = state["evidence"]
 
-        listing = list_directory(repo, ".", depth=3)
+        # depth=5, not 3: a src-layout package (src/pkg/subpkg/module.py) is four
+        # levels deep before any real code, so depth=3 listed the directories and
+        # none of the modules — the Explorer could not choose what it never saw.
+        listing = list_directory(repo, ".", depth=5)
         evidence.record_listing(
             [e.path for e in listing.entries],
             files_only=[e.path for e in listing.entries if e.type.value == "file"],

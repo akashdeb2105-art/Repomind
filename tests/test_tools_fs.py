@@ -183,3 +183,24 @@ def test_secrets_never_appear_in_search_results(sample_repo: RepoContext):
     result = search_code(sample_repo, "GROQ_API_KEY")
 
     assert result.matches == [], "a search must not surface credential file contents"
+
+
+# The credential filter matched .env.example on its ".env." prefix and hid the
+# repository's own setup instructions, so every mention of it read as a fabrication.
+@pytest.mark.parametrize("template", [".env.example", ".env.sample", ".env.template"])
+def test_env_templates_are_readable(sample_repo: RepoContext, template: str):
+    (sample_repo.root / template).write_text("GROQ_API_KEY=\n", encoding="utf-8")
+
+    result = read_file(sample_repo, template)
+
+    assert "GROQ_API_KEY=" in result.content
+    assert template in {e.path for e in list_directory(sample_repo, ".", depth=1).entries}
+
+
+def test_the_real_env_file_is_still_refused(sample_repo: RepoContext):
+    (sample_repo.root / ".env").write_text("GROQ_API_KEY=gsk_real\n", encoding="utf-8")
+    (sample_repo.root / ".env.local").write_text("GROQ_API_KEY=gsk_real\n", encoding="utf-8")
+
+    for secret in (".env", ".env.local"):
+        with pytest.raises(RepoError, match="credentials"):
+            read_file(sample_repo, secret)
