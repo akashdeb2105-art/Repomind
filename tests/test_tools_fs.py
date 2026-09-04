@@ -147,3 +147,39 @@ def test_get_readme_reports_absence_rather_than_raising(sample_repo: RepoContext
 
     assert readme.found is False
     assert readme.content == ""
+
+
+# --------------------------------------------------------------------------- #
+# Secrets — found by dogfooding the tools on RepoMind's own repo, where
+# list_directory cheerfully listed the .env holding three live API keys.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [".env", ".env.local", ".netrc", "credentials.json", "id_rsa", "server.pem", "app.key"],
+)
+def test_read_file_refuses_credential_files(sample_repo: RepoContext, secret: str):
+    (sample_repo.root / secret).write_text("API_KEY=sk-live-do-not-leak\n", encoding="utf-8")
+
+    with pytest.raises(RepoError, match="credentials"):
+        read_file(sample_repo, secret)
+
+
+def test_credential_files_are_not_even_listed(sample_repo: RepoContext):
+    """An agent cannot ask to read a file it was never told exists."""
+    (sample_repo.root / ".env").write_text("GROQ_API_KEY=secret\n", encoding="utf-8")
+
+    listing = list_directory(sample_repo, ".", depth=2)
+
+    assert ".env" not in {e.path for e in listing.entries}
+
+
+def test_secrets_never_appear_in_search_results(sample_repo: RepoContext):
+    from repomind.tools import search_code
+
+    (sample_repo.root / ".env").write_text("GROQ_API_KEY=gsk_supersecret\n", encoding="utf-8")
+
+    result = search_code(sample_repo, "GROQ_API_KEY")
+
+    assert result.matches == [], "a search must not surface credential file contents"

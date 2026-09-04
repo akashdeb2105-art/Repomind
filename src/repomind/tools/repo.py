@@ -128,6 +128,32 @@ NOISE_FILENAMES = frozenset(
     }
 )
 
+# Files that commonly hold credentials. RepoMind reads repositories on a
+# developer's machine and feeds what it finds to a third-party LLM API, so a
+# secret read here leaves the building. Refused by name, never opened, and
+# never listed — an agent cannot leak a file it is not told exists.
+SECRET_FILENAMES = frozenset(
+    {
+        ".env",
+        ".envrc",
+        ".netrc",
+        ".npmrc",
+        ".pypirc",
+        ".dockercfg",
+        "credentials",
+        "credentials.json",
+        "secrets.json",
+        "secrets.yaml",
+        "secrets.yml",
+        "id_rsa",
+        "id_dsa",
+        "id_ecdsa",
+        "id_ed25519",
+        "service-account.json",
+    }
+)
+SECRET_SUFFIXES = frozenset({".pem", ".key", ".p12", ".pfx", ".keystore", ".jks"})
+
 MAX_FILE_BYTES = 512_000  # ~500 KB; anything larger is vendored or generated
 MAX_LINE_CHARS = 2_000  # a longer "line" means minified
 
@@ -179,14 +205,24 @@ class RepoContext:
     # -- filtering ---------------------------------------------------------- #
 
     def is_ignored(self, path: Path) -> bool:
-        """True for paths inside noise directories, or that are noise themselves."""
+        """True for noise directories, generated files, and anything secret-shaped."""
         try:
             parts = path.resolve().relative_to(self.root).parts
         except ValueError:
             return True
         if any(part in IGNORED_DIRS for part in parts):
             return True
-        return path.name in NOISE_FILENAMES
+        return path.name in NOISE_FILENAMES or self.is_secret(path)
+
+    @staticmethod
+    def is_secret(path: Path) -> bool:
+        """Credential-shaped files: refused by name before anything opens them."""
+        name = path.name
+        return (
+            name in SECRET_FILENAMES
+            or name.startswith(".env.")
+            or path.suffix.lower() in SECRET_SUFFIXES
+        )
 
     @staticmethod
     def is_probably_binary(path: Path) -> bool:

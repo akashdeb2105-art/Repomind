@@ -32,6 +32,8 @@ def read_file(
     """
     target = repo.resolve(path)
 
+    if repo.is_secret(target):
+        raise RepoError(f"refusing to read a credentials file: {path}")
     if not target.exists():
         raise RepoError(f"file does not exist: {path}")
     if target.is_dir():
