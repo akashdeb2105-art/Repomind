@@ -115,3 +115,67 @@ def test_usage_is_collected_across_retries():
     structured_call(router, [{"role": "user", "content": "go"}], Answer, usage_sink=sink)  # type: ignore[arg-type]
 
     assert len(sink) == 2, "a retried call still spent tokens and must be counted"
+
+
+# --------------------------------------------------------------------------- #
+# Truncation: an answer cut off mid-JSON, not a malformed one
+# --------------------------------------------------------------------------- #
+
+
+def test_truncated_output_is_retried_with_a_larger_budget():
+    """Re-asking with the same budget truncates at the same place."""
+
+    class BudgetTracker:
+        def __init__(self):
+            self.budgets: list[int] = []
+
+        def complete(self, messages, **kwargs) -> LLMResponse:
+            self.budgets.append(kwargs.get("max_tokens", 0))
+            if len(self.budgets) == 1:
+                return reply('{"value": "a very long answ')  # cut off mid-string
+            return reply('{"value": "complete", "count": 1}')
+
+    router = BudgetTracker()
+    result = structured_call(router, [{"role": "user", "content": "go"}], Answer, max_tokens=1000)  # type: ignore[arg-type]
+
+    assert result.value == "complete"
+    assert router.budgets[1] > router.budgets[0], "the retry must get more room"
+
+
+def test_a_merely_wrong_answer_does_not_inflate_the_budget():
+    """Only truncation earns more tokens; ordinary garbage should not."""
+
+    class BudgetTracker:
+        def __init__(self):
+            self.budgets: list[int] = []
+
+        def complete(self, messages, **kwargs) -> LLMResponse:
+            self.budgets.append(kwargs.get("max_tokens", 0))
+            if len(self.budgets) == 1:
+                return reply('{"value": 42, "count": "not a number"}')  # valid JSON, wrong types
+            return reply('{"value": "ok", "count": 1}')
+
+    router = BudgetTracker()
+    structured_call(router, [{"role": "user", "content": "go"}], Answer, max_tokens=1000)  # type: ignore[arg-type]
+
+    assert router.budgets == [1000, 1000]
+
+
+def test_the_budget_is_capped():
+    from repomind.agent.llm import MAX_TOKEN_BUDGET
+
+    class AlwaysTruncated:
+        def __init__(self):
+            self.budgets: list[int] = []
+
+        def complete(self, messages, **kwargs) -> LLMResponse:
+            self.budgets.append(kwargs.get("max_tokens", 0))
+            return reply('{"value": "cut off her')
+
+    router = AlwaysTruncated()
+    with pytest.raises(StructuredOutputError):
+        structured_call(
+            router, [{"role": "user", "content": "go"}], Answer, max_tokens=10_000, max_attempts=4
+        )  # type: ignore[arg-type]
+
+    assert max(router.budgets) <= MAX_TOKEN_BUDGET

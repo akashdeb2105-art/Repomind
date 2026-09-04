@@ -27,6 +27,22 @@ logger = logging.getLogger("repomind.llm")
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
+MAX_TOKEN_BUDGET = 12_000
+
+# Pydantic/json phrasing for "the document ended before it was complete".
+_TRUNCATION_SIGNS = (
+    "EOF while parsing",
+    "Unterminated string",
+    "Expecting value",
+    "unexpected end of",
+    "control character",
+)
+
+
+def _looks_truncated(error: str) -> bool:
+    return any(sign.lower() in error.lower() for sign in _TRUNCATION_SIGNS)
+
+
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
 
@@ -80,10 +96,11 @@ def structured_call(
     """Call the LLM and return a validated `schema` instance."""
     conversation = list(messages)
     last_error = ""
+    budget = max_tokens
 
     for attempt in range(1, max_attempts + 1):
         try:
-            response = router.complete(conversation, max_tokens=max_tokens, temperature=temperature)
+            response = router.complete(conversation, max_tokens=budget, temperature=temperature)
         except AllProvidersFailed as exc:
             raise StructuredOutputError(f"no provider could answer: {exc}") from exc
 
@@ -95,6 +112,12 @@ def structured_call(
             return schema.model_validate_json(raw)
         except (ValidationError, ValueError) as exc:
             last_error = str(exc)[:600]
+            if _looks_truncated(last_error):
+                # Not a malformed answer — an answer cut off mid-JSON because it
+                # ran out of room. Re-asking with the same budget just truncates
+                # at the same place, so give it more space instead.
+                budget = min(int(budget * 1.75), MAX_TOKEN_BUDGET)
+                logger.info("output looks truncated; retrying with max_tokens=%d", budget)
             logger.warning(
                 "schema validation failed (attempt %d/%d): %s", attempt, max_attempts, last_error
             )

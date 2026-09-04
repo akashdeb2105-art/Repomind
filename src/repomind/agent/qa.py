@@ -112,7 +112,7 @@ def answer_question(
                 },
             ],
             QAAnswer,
-            max_tokens=2048,
+            max_tokens=3072,
             usage_sink=usage_sink,
         )
     except StructuredOutputError as exc:
