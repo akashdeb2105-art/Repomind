@@ -1,0 +1,33 @@
+# Secrets — never commit real keys
+.env
+.env.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# RepoMind runtime artifacts
+.repomind_cache/
+eval/_workdir/
+eval/_results/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

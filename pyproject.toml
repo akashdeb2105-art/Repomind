@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "repomind"
+version = "0.1.0.dev0"
+description = "An MCP server + LangGraph agent that makes any GitHub repo self-explaining."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "Akash Deb" }]
+keywords = ["mcp", "langgraph", "llm", "documentation", "code-analysis", "agent"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Documentation",
+]
+
+dependencies = [
+  "httpx>=0.27",
+  "pydantic>=2.7",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Installed from Phase 1 onward; kept separate so Phase 0 stays tiny and fast.
+agent = [
+  "langgraph>=0.2",
+  "typer>=0.12",
+  "rich>=13.7",
+  "GitPython>=3.1",
+  "PyYAML>=6.0",
+]
+mcp = ["mcp>=1.2"]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "respx>=0.21",
+  "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/akashdeb2105-art/Repomind"
+Issues = "https://github.com/akashdeb2105-art/Repomind/issues"
+
+[project.scripts]
+repomind = "repomind.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repomind"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "live: hits real free-tier provider APIs; skipped unless API keys are present",
+]
