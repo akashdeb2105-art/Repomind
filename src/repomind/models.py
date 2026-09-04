@@ -173,3 +173,92 @@ class ReadmeResult(BaseModel):
     content: str = ""
     truncated: bool = False
     found: bool = False
+
+
+# --------------------------------------------------------------------------- #
+# Agent outputs (Phase 2)
+# --------------------------------------------------------------------------- #
+
+
+class RepoMap(BaseModel):
+    """Explorer's structural read of a repository."""
+
+    summary: str = Field(description="Two or three sentences: what this project is")
+    primary_language: str = ""
+    entry_points: list[str] = Field(
+        default_factory=list, description="Paths a newcomer should read first"
+    )
+    key_files: list[str] = Field(
+        default_factory=list, description="Files worth opening to understand the design"
+    )
+    open_questions: list[str] = Field(
+        default_factory=list, description="Things the structure alone cannot answer"
+    )
+
+
+class FileNote(BaseModel):
+    """Deep-Dive's understanding of one file it actually read."""
+
+    path: str
+    purpose: str
+    key_symbols: list[str] = Field(default_factory=list)
+    depends_on: list[str] = Field(
+        default_factory=list, description="Other modules in this repo that it imports"
+    )
+
+
+class DocumentDraft(BaseModel):
+    onboarding_md: str
+    architecture_md: str
+
+
+class ClaimKind(str, Enum):  # noqa: UP042
+    FILE_PATH = "file_path"
+    DEPENDENCY = "dependency"
+    BEHAVIOUR = "behaviour"
+
+
+class Claim(BaseModel):
+    """One checkable assertion extracted from a draft document."""
+
+    text: str
+    kind: ClaimKind
+    target: str = Field(description="The path or package name the claim rests on")
+    grounded: bool = False
+    reason: str = ""
+    document: str = "onboarding"
+
+
+class CriticReport(BaseModel):
+    """What verification found, and what it did about it."""
+
+    claims: list[Claim] = Field(default_factory=list)
+    removed_lines: list[str] = Field(default_factory=list)
+    flagged: list[str] = Field(default_factory=list)
+
+    @property
+    def grounded_count(self) -> int:
+        return sum(1 for c in self.claims if c.grounded)
+
+    @property
+    def hallucination_count(self) -> int:
+        return sum(1 for c in self.claims if not c.grounded)
+
+    @property
+    def verdict(self) -> str:
+        if not self.claims:
+            return "no checkable claims found"
+        return f"{self.grounded_count}/{len(self.claims)} claims grounded in tool results"
+
+
+class RunUsage(BaseModel):
+    """Per-run telemetry. Feeds the benchmark table in Phase 5."""
+
+    provider_calls: list[str] = Field(default_factory=list)
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    wall_clock_s: float = 0.0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.prompt_tokens + self.completion_tokens
