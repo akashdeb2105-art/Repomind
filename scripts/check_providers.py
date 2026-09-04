@@ -24,6 +24,11 @@ from repomind.agent.providers import (  # noqa: E402
     ProviderError,
 )
 
+# Reasoning models (gpt-oss, thinking-enabled Gemini) burn tokens on internal
+# reasoning before emitting any content. Too small a budget returns an empty
+# string with a healthy 200, which is worse than an error — it looks like success.
+REPLY_BUDGET = 512
+
 PROMPT = [
     {"role": "system", "content": "Answer with a single word, no punctuation."},
     {"role": "user", "content": "What is the capital of France?"},
@@ -48,12 +53,20 @@ def check_each_provider() -> dict[str, bool]:
             continue
 
         try:
-            reply = provider.complete(PROMPT, max_tokens=16)
+            reply = provider.complete(PROMPT, max_tokens=REPLY_BUDGET)
         except ProviderError as exc:
             print(f"  {RED}FAIL{RESET}  {label}")
             print(f"        {DIM}{exc}{RESET}")
             results[name] = False
         else:
+            if not reply.text:
+                print(f"  {RED}FAIL{RESET}  {label}")
+                print(
+                    f"        {DIM}HTTP 200 but empty content ({reply.total_tokens} tokens "
+                    f"spent) — raise max_tokens or pick a non-reasoning model{RESET}"
+                )
+                results[name] = False
+                continue
             print(f"  {GREEN}OK{RESET}    {label}")
             print(
                 f"        {DIM}reply={reply.text!r}  {reply.latency_s}s  "
@@ -78,7 +91,7 @@ def check_fallback(healthy: dict[str, bool]) -> bool:
 
     router = LLMRouter(order=working, force_fail={primary})
     try:
-        reply = router.complete(PROMPT, max_tokens=16)
+        reply = router.complete(PROMPT, max_tokens=REPLY_BUDGET)
     except AllProvidersFailed as exc:
         print(f"  {RED}FAIL{RESET}  router gave up: {exc}")
         return False

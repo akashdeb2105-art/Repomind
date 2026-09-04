@@ -45,7 +45,7 @@ the choice in `.env` rather than editing source.
 |---|---|---|---|
 | 1 | Groq | `openai/gpt-oss-120b` | [console.groq.com](https://console.groq.com) |
 | 2 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
-| 3 | OpenRouter | `z-ai/glm-5.2:free` | [openrouter.ai](https://openrouter.ai) |
+| 3 | OpenRouter | `google/gemma-4-31b-it:free` | [openrouter.ai](https://openrouter.ai) |
 
 ## License
 
