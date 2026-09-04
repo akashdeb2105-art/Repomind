@@ -36,11 +36,16 @@ RepoMind never depends on one vendor. Requests go to Groq first, and fall
 through to Gemini, then OpenRouter, on rate limits or errors. All three are
 free tiers requiring no credit card.
 
+Model identifiers are configuration, not code — free-tier catalogues churn, and
+all three of these defaults will eventually go stale. `python
+scripts/list_models.py` asks each provider what it currently offers; override
+the choice in `.env` rather than editing source.
+
 | Order | Provider | Default model | Free-tier key |
 |---|---|---|---|
-| 1 | Groq | `llama-3.3-70b-versatile` | [console.groq.com](https://console.groq.com) |
-| 2 | Google Gemini | `gemini-2.0-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
-| 3 | OpenRouter | `meta-llama/llama-3.3-70b-instruct:free` | [openrouter.ai](https://openrouter.ai) |
+| 1 | Groq | `openai/gpt-oss-120b` | [console.groq.com](https://console.groq.com) |
+| 2 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
+| 3 | OpenRouter | `z-ai/glm-5.2:free` | [openrouter.ai](https://openrouter.ai) |
 
 ## License
 

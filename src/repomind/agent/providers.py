@@ -112,7 +112,7 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="groq",
         base_url="https://api.groq.com/openai/v1",
         api_key_env="GROQ_API_KEY",
-        default_model="llama-3.3-70b-versatile",
+        default_model="openai/gpt-oss-120b",
         model_env="REPOMIND_GROQ_MODEL",
         docs_url="https://console.groq.com",
     ),
@@ -121,7 +121,7 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         # Google ships an OpenAI-compatible shim, which lets us reuse one client.
         base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         api_key_env="GEMINI_API_KEY",
-        default_model="gemini-2.0-flash-lite",
+        default_model="gemini-3.5-flash-lite",
         model_env="REPOMIND_GEMINI_MODEL",
         docs_url="https://aistudio.google.com",
     ),
@@ -129,7 +129,7 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="openrouter",
         base_url="https://openrouter.ai/api/v1",
         api_key_env="OPENROUTER_API_KEY",
-        default_model="meta-llama/llama-3.3-70b-instruct:free",
+        default_model="z-ai/glm-5.2:free",
         model_env="REPOMIND_OPENROUTER_MODEL",
         docs_url="https://openrouter.ai",
         extra_headers={
