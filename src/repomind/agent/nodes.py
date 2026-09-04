@@ -88,7 +88,10 @@ def make_explorer(repo: RepoContext, router: LLMRouter) -> Node:
         evidence: Evidence = state["evidence"]
 
         listing = list_directory(repo, ".", depth=3)
-        evidence.record_listing([e.path for e in listing.entries])
+        evidence.record_listing(
+            [e.path for e in listing.entries],
+            files_only=[e.path for e in listing.entries if e.type.value == "file"],
+        )
 
         report = get_dependencies(repo)
         dependency_names = [d.name for m in report.manifests for d in m.dependencies]
@@ -129,10 +132,11 @@ def make_explorer(repo: RepoContext, router: LLMRouter) -> Node:
             return {"errors": [*state.get("errors", []), f"explorer: {exc}"], "repo_map": None}
 
         # Deterministic guard: the Explorer is told not to invent paths, but
-        # telling is not enforcing. Drop anything the tools never saw, so
-        # Deep-Dive is never sent hunting for a file that does not exist.
-        repo_map.entry_points = [p for p in repo_map.entry_points if evidence.knows_path(p)]
-        repo_map.key_files = [p for p in repo_map.key_files if evidence.knows_path(p)]
+        # telling is not enforcing. Keep only paths the tools saw AS FILES —
+        # on the first live run it nominated `src/repomind/agent`, a directory,
+        # and Deep-Dive burned two slots failing to read it.
+        repo_map.entry_points = [p for p in repo_map.entry_points if evidence.is_file(p)]
+        repo_map.key_files = [p for p in repo_map.key_files if evidence.is_file(p)]
 
         return {"repo_map": repo_map, "evidence": evidence}
 
@@ -270,7 +274,17 @@ def extract_path_claims(text: str, document: str) -> list[Claim]:
     candidates: list[str] = []
     for match in _BACKTICKED.finditer(text):
         token = match.group(1).strip()
-        if token.endswith(_CODE_EXTENSIONS) or ("/" in token and " " not in token):
+        if " " in token:
+            # A command, not a path: `python scripts/run_agent.py`. Verify the
+            # path argument inside it rather than the whole line, which would
+            # otherwise be reported as a fabricated file.
+            token = next(
+                (part for part in reversed(token.split()) if part.endswith(_CODE_EXTENSIONS)),
+                "",
+            )
+            if not token:
+                continue
+        if token.endswith(_CODE_EXTENSIONS) or "/" in token:
             candidates.append(token)
     candidates.extend(match.group(1) for match in _BARE_PATH.finditer(text))
 
@@ -391,12 +405,21 @@ class _ClaimList(BaseModel):
 
 def _llm_review(router: LLMRouter, state: AgentState, document: str) -> list[Claim]:
     evidence: Evidence = state["evidence"]
+    notes: list[FileNote] = state.get("file_notes", [])
+    note_block = (
+        "\n".join(
+            f"- {n.path}: {n.purpose} (symbols: {', '.join(n.key_symbols) or 'none'})"
+            for n in notes
+        )
+        or "(no files were read)"
+    )
     user = (
         f"Paths ACTUALLY observed by tools:\n"
         f"{chr(10).join(sorted(evidence.listed_paths)[:200])}\n\n"
-        f"Files ACTUALLY read:\n{chr(10).join(sorted(evidence.read_paths)) or '(none)'}\n\n"
+        f"Notes from files ACTUALLY read:\n{note_block}\n\n"
         f"Dependencies parsed from real manifests:\n"
         f"{', '.join(sorted(evidence.dependencies)) or '(none)'}\n\n"
+        f"The repository's own README:\n{evidence.readme_text[:2500] or '(none)'}\n\n"
         f"Draft document to verify:\n{document[:12000]}\n\n"
         'Return JSON: {"claims": [{"text": ..., "kind": "behaviour"|"dependency"|"file_path", '
         '"target": ..., "grounded": true|false, "reason": ...}]}. '

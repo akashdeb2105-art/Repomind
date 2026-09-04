@@ -143,3 +143,69 @@ def test_report_counts_are_accurate():
     assert report.grounded_count == 2
     assert report.hallucination_count == 1
     assert "2/3" in report.verdict
+
+
+# --------------------------------------------------------------------------- #
+# Regressions from the first live run against RepoMind's own repo
+# --------------------------------------------------------------------------- #
+
+
+def test_a_shell_command_is_not_mistaken_for_a_fabricated_file():
+    """`python scripts/run_agent.py` is a command; verify the path inside it."""
+    draft = "Run `python scripts/run_agent.py` to generate the docs.\n"
+    evidence = Evidence()
+    evidence.record_listing(["scripts/run_agent.py"])
+
+    claims = verify_path_claims(extract_path_claims(draft, "onboarding"), evidence)
+
+    assert [c.target for c in claims] == ["scripts/run_agent.py"]
+    assert claims[0].grounded is True
+
+
+def test_a_command_naming_a_fake_file_is_still_caught():
+    draft = "Run `python scripts/deploy.py` to ship it.\n"
+
+    claims = verify_path_claims(extract_path_claims(draft, "onboarding"), make_evidence())
+
+    assert claims[0].target == "scripts/deploy.py"
+    assert claims[0].grounded is False
+
+
+def test_directories_are_distinguished_from_files():
+    """Explorer nominated `src/repomind/agent` — a directory — as a file to read."""
+    evidence = Evidence()
+    evidence.record_listing(
+        ["src/repomind/agent", "src/repomind/agent/graph.py"],
+        files_only=["src/repomind/agent/graph.py"],
+    )
+
+    assert evidence.knows_path("src/repomind/agent")
+    assert not evidence.is_file("src/repomind/agent"), "a directory is not readable by read_file"
+    assert evidence.is_file("src/repomind/agent/graph.py")
+
+
+def test_a_null_target_from_the_model_is_coerced():
+    """Models return target: null for behavioural claims; rejecting it burns retries."""
+    from repomind.models import Claim
+
+    claim = Claim.model_validate(
+        {"text": "It scales well.", "kind": "behaviour", "target": None, "grounded": False}
+    )
+
+    assert claim.target == ""
+
+
+def test_verdict_separates_deterministic_findings_from_advisory_ones():
+    from repomind.models import Claim, ClaimKind, CriticReport
+
+    report = CriticReport(
+        claims=[
+            Claim(text="`README.md`", kind=ClaimKind.FILE_PATH, target="README.md", grounded=True),
+            Claim(text="`ghost.py`", kind=ClaimKind.FILE_PATH, target="ghost.py", grounded=False),
+            Claim(text="Uses Redis", kind=ClaimKind.BEHAVIOUR, target="", grounded=False),
+        ]
+    )
+
+    assert report.hallucination_count == 1, "advisory opinion must not inflate the failure count"
+    assert len(report.advisory_claims) == 1
+    assert "1/2 file references verified" in report.verdict

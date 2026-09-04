@@ -29,6 +29,7 @@ class Evidence:
     """Everything the tools actually observed, accumulated across nodes."""
 
     listed_paths: set[str] = field(default_factory=set)
+    file_paths: set[str] = field(default_factory=set)
     read_paths: set[str] = field(default_factory=set)
     file_texts: dict[str, str] = field(default_factory=dict)
     dependencies: set[str] = field(default_factory=set)
@@ -38,12 +39,14 @@ class Evidence:
 
     # -- recording ---------------------------------------------------------- #
 
-    def record_listing(self, paths: list[str]) -> None:
+    def record_listing(self, paths: list[str], files_only: list[str] | None = None) -> None:
         self.listed_paths.update(paths)
+        self.file_paths.update(files_only if files_only is not None else paths)
 
     def record_read(self, path: str, text: str) -> None:
         self.read_paths.add(path)
         self.listed_paths.add(path)
+        self.file_paths.add(path)
         self.file_texts[path] = text
 
     def record_dependencies(self, names: list[str]) -> None:
@@ -67,6 +70,11 @@ class Evidence:
     def has_read(self, path: str) -> bool:
         needle = normalise_path(path)
         return any(normalise_path(known) == needle for known in self.read_paths)
+
+    def is_file(self, path: str) -> bool:
+        """True only for paths a tool saw as an actual file, not a directory."""
+        needle = normalise_path(path)
+        return any(normalise_path(known) == needle for known in self.file_paths)
 
     def has_dependency(self, name: str) -> bool:
         return name.strip().lower() in self.dependencies

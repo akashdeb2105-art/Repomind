@@ -75,11 +75,15 @@ def main() -> int:
     if report:
         colour = GREEN if report.hallucination_count == 0 else YELLOW
         print(f"\n{BOLD}Critic{RESET}  {colour}{report.verdict}{RESET}")
-        for claim in report.claims:
+        for claim in report.path_claims:
             if not claim.grounded:
-                print(f"{RED}  ungrounded{RESET} {claim.target}  {DIM}({claim.reason}){RESET}")
+                print(f"{RED}  FABRICATED PATH{RESET} {claim.target}  {DIM}({claim.reason}){RESET}")
         if report.removed_lines:
             print(f"{DIM}  removed {len(report.removed_lines)} fabricated line(s){RESET}")
+        if report.flagged:
+            print(f"{DIM}  marked {len(report.flagged)} sentence(s) unverified{RESET}")
+        for claim in report.advisory_claims:
+            print(f"{YELLOW}  advisory{RESET} {claim.text[:60]}  {DIM}{claim.reason[:60]}{RESET}")
 
     for error in state.get("errors", []):
         print(f"{YELLOW}  warning: {error}{RESET}")

@@ -77,8 +77,9 @@ of defence against a confident, wrong document.
 
 You are given:
   - a list of file paths that tools ACTUALLY observed in the repository,
-  - a list of files that were ACTUALLY read,
+  - notes written from files that were ACTUALLY read,
   - a list of dependencies parsed from real manifest files,
+  - the repository's own README, if it has one,
   - a draft document.
 
 Find every statement in the draft that is not supported by that evidence.
@@ -92,8 +93,17 @@ Treat as UNGROUNDED:
 
 Treat as GROUNDED:
 - general prose that makes no specific factual claim,
-- statements about files that were read, consistent with them being read,
+- statements consistent with the notes from files that were read,
+- statements supported by the repository's own README (it is written by the
+  maintainers, so it is evidence of intent — flag it only where it is
+  contradicted by the code that was read),
+- claims about libraries that appear in the parsed dependency list,
 - explicit admissions of uncertainty.
+
+Do NOT flag a claim merely because a file was not read exhaustively. Only a
+SPECIFIC assertion with nothing behind it counts as ungrounded. If you are
+unsure, leave it alone: a report full of false positives gets ignored, and an
+ignored verifier protects nobody.
 
 Be precise, not paranoid. Flagging ordinary connective prose makes the report \
 useless. A claim is ungrounded only when it asserts something specific that the \

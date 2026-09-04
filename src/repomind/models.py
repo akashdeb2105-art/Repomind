@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ToolError(BaseModel):
@@ -223,10 +223,18 @@ class Claim(BaseModel):
 
     text: str
     kind: ClaimKind
-    target: str = Field(description="The path or package name the claim rests on")
+    # Optional with a coercing validator: models return `null` here constantly
+    # for behavioural claims that rest on no single path, and rejecting that
+    # burned two retries per critic call on the first live run.
+    target: str = Field(default="", description="The path or package name the claim rests on")
     grounded: bool = False
     reason: str = ""
     document: str = "onboarding"
+
+    @field_validator("target", mode="before")
+    @classmethod
+    def _null_target_is_empty(cls, value: object) -> str:
+        return "" if value is None else str(value)
 
 
 class CriticReport(BaseModel):
@@ -237,18 +245,32 @@ class CriticReport(BaseModel):
     flagged: list[str] = Field(default_factory=list)
 
     @property
+    def path_claims(self) -> list[Claim]:
+        """Deterministically verified. These are the findings that edit the document."""
+        return [c for c in self.claims if c.kind is ClaimKind.FILE_PATH]
+
+    @property
+    def advisory_claims(self) -> list[Claim]:
+        """Raised by the LLM pass: worth reading, never authoritative."""
+        return [c for c in self.claims if c.kind is not ClaimKind.FILE_PATH]
+
+    @property
     def grounded_count(self) -> int:
-        return sum(1 for c in self.claims if c.grounded)
+        return sum(1 for c in self.path_claims if c.grounded)
 
     @property
     def hallucination_count(self) -> int:
-        return sum(1 for c in self.claims if not c.grounded)
+        return sum(1 for c in self.path_claims if not c.grounded)
 
     @property
     def verdict(self) -> str:
-        if not self.claims:
-            return "no checkable claims found"
-        return f"{self.grounded_count}/{len(self.claims)} claims grounded in tool results"
+        paths = self.path_claims
+        if not paths:
+            return "no verifiable file references found"
+        line = f"{self.grounded_count}/{len(paths)} file references verified against tool results"
+        if self.advisory_claims:
+            line += f" ({len(self.advisory_claims)} advisory flags from the LLM pass)"
+        return line
 
 
 class RunUsage(BaseModel):
