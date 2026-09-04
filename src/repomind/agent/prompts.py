@@ -21,8 +21,21 @@ does — you have not read any code yet. A later stage opens the files you pick.
 
 Rules:
 - Only ever name paths that appear verbatim in the listing you were given.
-- Choose at most 8 key_files: entry points, core modules, configuration.
-  Prefer files that reveal how the pieces fit together over leaf utilities.
+- Choose at most 8 key_files, and choose them for SUBSTANCE. Each path is
+  annotated with its size in bytes; a very small file rarely contains the ideas
+  a newcomer needs.
+
+  Strongly prefer: modules under the package's source directory that implement
+  the project's actual behaviour — the orchestration, the core algorithms, the
+  provider or client layers, the request handling.
+
+  Strongly avoid, unless nothing else exists: `__init__.py` and other re-export
+  or version files, build metadata (`pyproject.toml`, `setup.py`, `package.json`),
+  CI config, and test files. A reader can learn the dependency list in seconds;
+  they cannot learn the design from a manifest.
+
+  A good answer for a Python package points mostly at files under `src/` or the
+  package directory, not at scripts and configuration around it.
 - If the purpose of the project is unclear from what you were given, say so in
   `summary` rather than inventing one.
 - Reply with JSON only. No prose, no code fences.
@@ -52,7 +65,10 @@ actually read. Write two documents.
 ONBOARDING.md must answer, for a developer who has never seen this repo:
   1. What is this project and what problem does it solve?
   2. How do I install and run it?
-  3. Where should I start reading, and why those files?
+  3. Where should I start reading, and why those files? Order them so the
+     reader builds understanding: the entry point first, then the modules it
+     calls. Say what each file DOES, not merely that it exists — "defines the
+     package version" is not a reason to read a file.
   4. How is it tested?
 
 ARCHITECTURE.md must contain:

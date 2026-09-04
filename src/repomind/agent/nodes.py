@@ -42,7 +42,7 @@ from repomind.tools import (
 logger = logging.getLogger("repomind.agent")
 
 MAX_LISTED_PATHS_IN_PROMPT = 300
-MAX_DEEP_DIVE_FILES = 6
+MAX_DEEP_DIVE_FILES = 8
 MAX_FILE_CHARS_IN_PROMPT = 8_000
 
 Node = Callable[[AgentState], AgentState]
@@ -115,10 +115,14 @@ def make_explorer(repo: RepoContext, router: LLMRouter) -> Node:
         except RepoError:
             pass  # not a git repo, or git unavailable: not fatal
 
+        # Annotate with size: a 2-line __init__.py and a 400-line core module
+        # look identical in a bare path list, and the Explorer picked by name.
+        sizes = {e.path: e.size_bytes for e in listing.entries if e.size_bytes}
         paths = sorted(evidence.listed_paths)[:MAX_LISTED_PATHS_IN_PROMPT]
+        annotated = [f"{path}  ({sizes[path]:,}b)" if path in sizes else path for path in paths]
         deps = ", ".join(sorted(evidence.dependencies)) or "none"
         user = (
-            f"Directory listing ({len(paths)} paths):\n" + "\n".join(paths) + "\n\n"
+            f"Directory listing ({len(paths)} paths):\n" + "\n".join(annotated) + "\n\n"
             f"Dependencies parsed from manifests: {deps}\n\n"
             f"README (may be absent or stale):\n{evidence.readme_text[:3000] or '(no README)'}\n\n"
             f"Recent commit subjects:\n"
