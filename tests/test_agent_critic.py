@@ -209,3 +209,24 @@ def test_verdict_separates_deterministic_findings_from_advisory_ones():
     assert report.hallucination_count == 1, "advisory opinion must not inflate the failure count"
     assert len(report.advisory_claims) == 1
     assert "1/2 file references verified" in report.verdict
+
+
+def test_globs_and_elisions_are_not_treated_as_claims():
+    """Shorthand the Synthesizer writes: `tests/test_*.py`, `tests/…`, `src/{a,b}.py`."""
+    draft = (
+        "Tests live in `tests/test_tools_*.py` and `tests/…`.\n"
+        "Config is in `src/{dev,prod}.py` or `config/<env>.yaml`.\n"
+    )
+
+    claims = extract_path_claims(draft, "onboarding")
+
+    assert claims == [], f"shorthand must not be reported as fabrication, got {claims}"
+
+
+def test_a_real_path_beside_shorthand_is_still_checked():
+    draft = "See `tests/test_*.py` and also `src/sample/ghost.py`.\n"
+
+    claims = verify_path_claims(extract_path_claims(draft, "onboarding"), make_evidence())
+
+    assert [c.target for c in claims] == ["src/sample/ghost.py"]
+    assert claims[0].grounded is False

@@ -53,6 +53,12 @@ _BARE_PATH = re.compile(
     r"\b((?:[\w.-]+/)*[\w.-]+\.(?:py|pyi|js|jsx|ts|tsx|go|rs|rb|java|toml|cfg|ini|"
     r"json|ya?ml|md|txt|sh|lock))\b"
 )
+# Shorthand, not assertions: `tests/test_*.py` is a glob and `tests/…` is an
+# elision. Neither claims a file exists, so reporting them as fabrications is a
+# false positive — and a verifier that cries wolf gets ignored, which is worse
+# than having none.
+_NOT_A_CLAIM = ("*", "?", "…", "...", "<", ">", "{", "}", "[", "]")
+
 _CODE_EXTENSIONS = (
     ".py",
     ".pyi",
@@ -295,6 +301,8 @@ def extract_path_claims(text: str, document: str) -> list[Claim]:
         if not target or target in seen:
             continue
         if target.startswith(("http://", "https://", "www.")):
+            continue
+        if any(marker in target for marker in _NOT_A_CLAIM):
             continue
         seen.add(target)
         claims.append(Claim(text=raw, kind=ClaimKind.FILE_PATH, target=target, document=document))
