@@ -7,7 +7,7 @@ total spend was $0.00.
 
 | Repo | Size | Lang | Files | Read | Time | Tokens | Provider | Paths verified | Fabricated | Accuracy | Usefulness |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| typer | medium | python | — | — | — | — | — | — | — | — | error: clone failed: Command '['git', 'clone',  |
+| typer | medium | python | — | — | — | — | — | — | — | — | error: AttributeError: 'NoneType' object has no |
 
 ## Totals
 

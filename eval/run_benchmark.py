@@ -169,11 +169,14 @@ def clone(url: str, name: str) -> Path:
         ["git", "clone", "--depth", str(CLONE_DEPTH), url, str(destination)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=CLONE_TIMEOUT_S,
         check=False,
     )
     if completed.returncode != 0:
-        raise RuntimeError(completed.stderr.strip() or f"git exited {completed.returncode}")
+        stderr = (completed.stderr or "").strip()
+        raise RuntimeError(stderr or f"git exited {completed.returncode}")
     return destination
 
 

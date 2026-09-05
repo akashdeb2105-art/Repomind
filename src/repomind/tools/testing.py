@@ -29,6 +29,14 @@ from repomind.tools.repo import RepoContext
 
 DEFAULT_TIMEOUT_S = 120.0
 MAX_OUTPUT_CHARS = 4_000
+
+# text=True alone decodes with the *locale* encoding, which is cp1252 on a
+# default Windows install. Source code, commit messages and test output are
+# full of characters cp1252 cannot represent — one curly quote in one commit
+# message killed a benchmark run, because the decode failure happens on a
+# reader thread and surfaces only as stdout being None six frames later.
+# UTF-8 with replacement is the only safe reading of another program's output.
+DECODE = {"encoding": "utf-8", "errors": "replace"}
 ENABLE_ENV_VAR = "REPOMIND_ALLOW_TEST_EXECUTION"
 
 
@@ -111,7 +119,8 @@ def run_tests(
             text=True,
             timeout=timeout_s,
             check=False,
-            shell=False,  # never a shell: no injection surface from repo contents
+            shell=False,
+            **DECODE,  # never a shell: no injection surface from repo contents
         )
     except subprocess.TimeoutExpired as exc:
         return TestRunResult(

@@ -74,11 +74,15 @@ def _open_repo(target: str, clone_depth: int) -> tuple[RepoContext, Path | None]
             check=True,
             capture_output=True,
             text=True,
+            # Never the locale encoding: a repo name or git message with a
+            # non-ASCII byte would raise UnicodeDecodeError on Windows.
+            encoding="utf-8",
+            errors="replace",
             timeout=CLONE_TIMEOUT_S,
         )
     except subprocess.CalledProcessError as exc:
         shutil.rmtree(temp_dir, ignore_errors=True)
-        raise typer.BadParameter(f"clone failed: {exc.stderr.strip()[:200]}") from exc
+        raise typer.BadParameter(f"clone failed: {(exc.stderr or '').strip()[:200]}") from exc
     except subprocess.TimeoutExpired as exc:
         shutil.rmtree(temp_dir, ignore_errors=True)
         raise typer.BadParameter(f"clone timed out after {CLONE_TIMEOUT_S}s") from exc

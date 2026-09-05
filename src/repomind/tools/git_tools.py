@@ -13,6 +13,14 @@ import subprocess
 from repomind.models import BlameEntry, Commit, FileBlame, GitHistory
 from repomind.tools.repo import MAX_LINE_CHARS, RepoContext, RepoError
 
+# text=True alone decodes with the *locale* encoding, which is cp1252 on a
+# default Windows install. Source code, commit messages and test output are
+# full of characters cp1252 cannot represent — one curly quote in one commit
+# message killed a benchmark run, because the decode failure happens on a
+# reader thread and surfaces only as stdout being None six frames later.
+# UTF-8 with replacement is the only safe reading of another program's output.
+DECODE = {"encoding": "utf-8", "errors": "replace"}
+
 GIT_TIMEOUT_S = 20.0
 SEP = "\x1f"  # ASCII unit separator: cannot appear in a commit message
 DEFAULT_HISTORY_LIMIT = 20
@@ -29,6 +37,7 @@ def _run_git(repo: RepoContext, args: list[str]) -> str:
             text=True,
             timeout=GIT_TIMEOUT_S,
             check=False,
+            **DECODE,
         )
     except FileNotFoundError:
         raise RepoError("git is not installed or not on PATH") from None
@@ -36,8 +45,9 @@ def _run_git(repo: RepoContext, args: list[str]) -> str:
         raise RepoError(f"git command timed out after {GIT_TIMEOUT_S}s") from None
 
     if completed.returncode != 0:
-        raise RepoError(f"git {' '.join(args[:2])} failed: {completed.stderr.strip()[:300]}")
-    return completed.stdout
+        stderr = completed.stderr or ""
+        raise RepoError(f"git {' '.join(args[:2])} failed: {stderr.strip()[:300]}")
+    return completed.stdout or ""
 
 
 def get_git_history(

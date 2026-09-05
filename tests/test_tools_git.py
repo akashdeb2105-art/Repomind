@@ -47,3 +47,41 @@ def test_blame_attributes_lines_to_authors(git_repo: RepoContext):
     assert blame.authors.get("Sample Dev", 0) > 0
     assert all(e.line_number > 0 for e in blame.entries)
     assert all(len(e.sha) == 8 for e in blame.entries)
+
+
+def test_non_ascii_commit_messages_do_not_break_history(git_repo: RepoContext):
+    """A curly quote in one commit message killed a whole benchmark run.
+
+    subprocess with text=True decodes using the locale encoding — cp1252 on a
+    default Windows install — and the failure surfaces as stdout being None,
+    far from its cause.
+    """
+    import subprocess
+
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(git_repo.root),
+            "commit",
+            "--allow-empty",
+            "-q",
+            "-m",
+            "fix: don’t drop “smart quotes” — café naïve 中文",
+        ],
+        check=True,
+        capture_output=True,
+        env={"PATH": "/usr/bin:/bin:/usr/local/bin", "GIT_CONFIG_GLOBAL": "/dev/null"},
+    )
+
+    history = get_git_history(git_repo, limit=5)
+
+    assert history.commits, "history must survive non-ASCII output"
+    assert "smart quotes" in history.commits[0].subject
+
+
+def test_git_output_is_never_none(git_repo: RepoContext):
+    """Even if a decode fails, downstream code gets a string, not None."""
+    from repomind.tools.git_tools import _run_git
+
+    assert isinstance(_run_git(git_repo, ["log", "--oneline", "-1"]), str)

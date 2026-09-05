@@ -19,6 +19,14 @@ from repomind.tools.repo import IGNORED_DIRS, MAX_LINE_CHARS, RepoContext, RepoE
 DEFAULT_MAX_MATCHES = 100
 SEARCH_TIMEOUT_S = 20.0
 
+# text=True alone decodes with the *locale* encoding, which is cp1252 on a
+# default Windows install. Source code, commit messages and test output are
+# full of characters cp1252 cannot represent — one curly quote in one commit
+# message killed a benchmark run, because the decode failure happens on a
+# reader thread and surfaces only as stdout being None six frames later.
+# UTF-8 with replacement is the only safe reading of another program's output.
+DECODE = {"encoding": "utf-8", "errors": "replace"}
+
 
 def _ripgrep_available() -> bool:
     return shutil.which("rg") is not None
@@ -69,20 +77,25 @@ def _search_ripgrep(
 
     try:
         completed = subprocess.run(
-            command, capture_output=True, text=True, timeout=SEARCH_TIMEOUT_S, check=False
+            command,
+            capture_output=True,
+            text=True,
+            timeout=SEARCH_TIMEOUT_S,
+            check=False,
+            **DECODE,
         )
     except subprocess.TimeoutExpired:
         raise RepoError(f"search timed out after {SEARCH_TIMEOUT_S}s: {query}") from None
 
     # rg exits 1 for "no matches", which is a valid empty result, not an error.
     if completed.returncode not in (0, 1):
-        raise RepoError(f"ripgrep failed: {completed.stderr[:300]}")
+        raise RepoError(f"ripgrep failed: {(completed.stderr or '')[:300]}")
 
     matches: list[SearchMatch] = []
     files: set[str] = set()
     truncated = False
 
-    for raw in completed.stdout.splitlines():
+    for raw in (completed.stdout or "").splitlines():
         try:
             event = json.loads(raw)
         except json.JSONDecodeError:
