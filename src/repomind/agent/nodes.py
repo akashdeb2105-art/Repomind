@@ -299,7 +299,9 @@ def extract_path_claims(text: str, document: str) -> list[Claim]:
                 continue
         if token.endswith(_CODE_EXTENSIONS) or "/" in token:
             candidates.append(token)
-    candidates.extend(match.group(1) for match in _BARE_PATH.finditer(text))
+    candidates.extend(
+        match.group(1) for match in _BARE_PATH.finditer(text) if _looks_like_a_path(match.group(1))
+    )
 
     claims: list[Claim] = []
     seen: set[str] = set()
@@ -314,6 +316,20 @@ def extract_path_claims(text: str, document: str) -> list[Claim]:
         seen.add(target)
         claims.append(Claim(text=raw, kind=ClaimKind.FILE_PATH, target=target, document=document))
     return claims
+
+
+def _looks_like_a_path(token: str) -> bool:
+    """Reject prose that merely ends in a file extension.
+
+    `Node.js`, `Vue.js` and `Next.js` are technologies, not files. Marking them
+    unverified in a generated document is a false positive, and a verifier that
+    cries wolf gets ignored. A token written without a directory separator only
+    counts as a path when it is spelled like a filename — lowercase.
+    """
+    if "/" in token:
+        return True
+    stem = token.rsplit(".", 1)[0]
+    return stem.lower() == stem
 
 
 def verify_path_claims(claims: list[Claim], evidence: Evidence) -> list[Claim]:

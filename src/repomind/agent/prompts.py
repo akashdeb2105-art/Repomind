@@ -80,8 +80,13 @@ ARCHITECTURE.md must contain:
 Rules — these matter more than fluency:
 - Mention ONLY file paths that appear in the material you were given. A path you
   cannot see in the input does not exist.
-- If you do not know how to install or run the project, write "Not documented in
-  the repository" rather than inventing a command.
+- Installation and usage commands that appear in the repository's own README are
+  evidence: repeat them. Its maintainers wrote them, and a guide that will not
+  tell a reader how to install the project has failed at its job. Write "Not
+  documented in the repository" only when nothing you were given shows how to
+  install or run it — never as a way of playing safe.
+- What you must not do is INVENT a command. Repeating one you were shown is
+  grounded; guessing one is not. Those are different acts.
 - Do not describe behaviour of files that were not read. Vagueness beats fiction.
 - Write real Markdown. Reply with JSON only, containing the two documents as
   strings. No code fences around the JSON itself.

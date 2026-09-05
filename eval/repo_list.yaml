@@ -1,0 +1,85 @@
+# The benchmark set: deliberately varied in size, language and layout.
+#
+# Chosen so the numbers mean something rather than flatter the tool:
+#   - a few tiny repos, where there is little to find and vagueness is tempting
+#   - several mid-sized libraries, the realistic case
+#   - one large one, where the file listing alone strains a context window
+#   - Python and JavaScript, plus a Go repo to check graceful degradation
+#
+# `expect` records what a human considers the right answer to "where do I start
+# reading". Nothing scores it automatically — it exists so the manual
+# spot-check compares against something written down in advance, rather than a
+# judgement formed after seeing the output.
+
+repos:
+  - name: itsdangerous
+    url: https://github.com/pallets/itsdangerous
+    size: small
+    language: python
+    expect: src/itsdangerous/serializer.py
+
+  - name: chalk
+    url: https://github.com/chalk/chalk
+    size: small
+    language: javascript
+    expect: source/index.js
+
+  - name: slugify
+    url: https://github.com/sindresorhus/slugify
+    size: small
+    language: javascript
+    expect: index.js
+
+  - name: click
+    url: https://github.com/pallets/click
+    size: medium
+    language: python
+    expect: src/click/core.py
+
+  - name: requests
+    url: https://github.com/psf/requests
+    size: medium
+    language: python
+    expect: src/requests/sessions.py
+
+  - name: typer
+    url: https://github.com/fastapi/typer
+    size: medium
+    language: python
+    expect: typer/main.py
+
+  - name: httpx
+    url: https://github.com/encode/httpx
+    size: medium
+    language: python
+    expect: httpx/_client.py
+
+  - name: attrs
+    url: https://github.com/python-attrs/attrs
+    size: medium
+    language: python
+    expect: src/attr/_make.py
+
+  - name: axios
+    url: https://github.com/axios/axios
+    size: medium
+    language: javascript
+    expect: lib/core/Axios.js
+
+  - name: express
+    url: https://github.com/expressjs/express
+    size: medium
+    language: javascript
+    expect: lib/application.js
+
+  - name: cobra
+    url: https://github.com/spf13/cobra
+    size: medium
+    language: go
+    expect: command.go
+
+  - name: flask
+    url: https://github.com/pallets/flask
+    size: large
+    language: python
+    expect: src/flask/app.py

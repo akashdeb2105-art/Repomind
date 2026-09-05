@@ -263,3 +263,28 @@ def test_a_genuinely_invented_file_is_still_caught():
 
     assert not evidence.knows_path("scripts/deploy.py")
     assert not evidence.knows_path("database.py")
+
+
+def test_technology_names_are_not_treated_as_files():
+    """Found by reading a generated guide: `Node.js` was flagged unverified."""
+    draft = "Works in Node.js and the browser, built with Vue.js and Next.js.\n"
+
+    assert extract_path_claims(draft, "onboarding") == []
+
+
+def test_lowercase_bare_filenames_are_still_checked():
+    """The fix must not blind the Critic to real bare filenames."""
+    evidence = Evidence()
+    evidence.record_listing(["source/index.js"])
+
+    claims = verify_path_claims(extract_path_claims("See index.js for details.", "d"), evidence)
+
+    assert [c.target for c in claims] == ["index.js"]
+    assert claims[0].grounded is True
+
+
+def test_a_capitalised_path_with_a_separator_is_still_a_path():
+    """Only *bare* tokens get the lowercase rule; `docs/README.md` is a real path."""
+    targets = {c.target for c in extract_path_claims("See `docs/README.md`.", "d")}
+
+    assert "docs/README.md" in targets
