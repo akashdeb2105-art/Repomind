@@ -11,6 +11,7 @@ import pytest
 import respx
 
 from repomind.agent.providers import (
+    DEFAULT_ORDER,
     PROVIDER_CONFIGS,
     AllProvidersFailed,
     LLMRouter,
@@ -104,17 +105,19 @@ def test_router_prefers_the_first_provider(all_keys):
 
 
 def test_router_falls_back_when_the_primary_rate_limits(all_keys):
-    """The behaviour the brief cares about: Groq 429s, Gemini answers."""
+    """The behaviour the brief cares about: the primary 429s, the next one answers."""
+    primary, secondary = DEFAULT_ORDER[0], DEFAULT_ORDER[1]
+
     with respx.mock:
-        groq = respx.post(_route("groq")).mock(return_value=httpx.Response(429, text="limit"))
-        respx.post(_route("gemini")).mock(
-            return_value=httpx.Response(200, json=_chat_payload("from gemini"))
+        first = respx.post(_route(primary)).mock(return_value=httpx.Response(429, text="limit"))
+        respx.post(_route(secondary)).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from the fallback"))
         )
         reply = LLMRouter(max_attempts_per_provider=2, base_backoff=0).complete(MESSAGES)
 
-    assert reply.provider == "gemini"
-    assert reply.text == "from gemini"
-    assert groq.call_count == 2, "should exhaust its retries before failing over"
+    assert reply.provider == secondary
+    assert reply.text == "from the fallback"
+    assert first.call_count == 2, "should exhaust its retries before failing over"
 
 
 def test_router_retries_then_succeeds_on_the_same_provider(all_keys):
@@ -132,9 +135,9 @@ def test_router_retries_then_succeeds_on_the_same_provider(all_keys):
 
 
 def test_router_skips_providers_with_no_key(monkeypatch):
-    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    for config in PROVIDER_CONFIGS.values():
+        monkeypatch.delenv(config.api_key_env, raising=False)
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
     with respx.mock:
         groq = respx.post(_route("groq")).mock(
@@ -154,23 +157,23 @@ def test_force_fail_proves_the_fallback_drill(all_keys):
         groq = respx.post(_route("groq")).mock(
             return_value=httpx.Response(200, json=_chat_payload("x"))
         )
-        respx.post(_route("gemini")).mock(
-            return_value=httpx.Response(200, json=_chat_payload("from gemini"))
+        respx.post(_route("nararouter")).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
         )
         reply = LLMRouter(base_backoff=0, force_fail={"groq"}).complete(MESSAGES)
 
-    assert reply.provider == "gemini"
+    assert reply.provider == "nararouter", "the drill lands on whoever is next in the chain"
     assert groq.call_count == 0
 
 
 def test_router_raises_when_everything_fails(all_keys):
     with respx.mock:
-        for name in ("groq", "gemini", "openrouter"):
+        for name in PROVIDER_CONFIGS:
             respx.post(_route(name)).mock(return_value=httpx.Response(500, text="boom"))
         with pytest.raises(AllProvidersFailed) as exc:
             LLMRouter(max_attempts_per_provider=1, base_backoff=0).complete(MESSAGES)
 
-    assert set(exc.value.failures) == {"groq", "gemini", "openrouter"}
+    assert set(exc.value.failures) == set(PROVIDER_CONFIGS)
 
 
 def test_unknown_provider_name_is_rejected():
@@ -240,11 +243,40 @@ def test_a_long_rate_limit_fails_over_immediately(all_keys, monkeypatch):
         groq = respx.post(_route("groq")).mock(
             return_value=httpx.Response(429, text="Please try again in 39.9s")
         )
-        respx.post(_route("gemini")).mock(
-            return_value=httpx.Response(200, json=_chat_payload("from gemini"))
+        respx.post(_route("nararouter")).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
         )
         reply = LLMRouter().complete(MESSAGES)
 
-    assert reply.provider == "gemini"
+    assert reply.provider == "nararouter"
     assert groq.call_count == 1, "no point retrying a limit we refuse to wait out"
     assert slept == [], "and no sleeping before failing over"
+
+
+def test_a_fourth_provider_needed_no_code_beyond_its_config(all_keys):
+    """The README claims adding a provider is a config entry. This asserts it."""
+    from repomind.agent.providers import DEFAULT_ORDER
+
+    assert "nararouter" in PROVIDER_CONFIGS
+    assert DEFAULT_ORDER == ("groq", "nararouter", "gemini", "openrouter")
+
+    with respx.mock:
+        respx.post(_route("groq")).mock(return_value=httpx.Response(429, text="limit"))
+        respx.post(_route("nararouter")).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
+        )
+        reply = LLMRouter(max_attempts_per_provider=1, base_backoff=0).complete(MESSAGES)
+
+    assert reply.provider == "nararouter"
+
+
+def test_the_chain_still_reaches_the_end_when_three_providers_fail(all_keys):
+    with respx.mock:
+        for name in ("groq", "nararouter", "gemini"):
+            respx.post(_route(name)).mock(return_value=httpx.Response(503, text="down"))
+        respx.post(_route("openrouter")).mock(
+            return_value=httpx.Response(200, json=_chat_payload("last resort"))
+        )
+        reply = LLMRouter(max_attempts_per_provider=1, base_backoff=0).complete(MESSAGES)
+
+    assert reply.provider == "openrouter"

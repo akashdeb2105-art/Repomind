@@ -142,8 +142,12 @@ limits or errors. All three are free tiers requiring no credit card.
 | Order | Provider | Default model | Get a key |
 |---|---|---|---|
 | 1 | Groq | `openai/gpt-oss-120b` | [console.groq.com](https://console.groq.com) |
-| 2 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
-| 3 | OpenRouter | `google/gemma-4-31b-it:free` | [openrouter.ai](https://openrouter.ai) |
+| 2 | NaraRouter | `laguna-s-2.1` | [router.bynara.id](https://router.bynara.id) |
+| 3 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
+| 4 | OpenRouter | `google/gemma-4-31b-it:free` | [openrouter.ai](https://openrouter.ai) |
+
+Any provider whose key is absent is skipped rather than treated as an error, so
+a working install needs only one of them.
 
 Model identifiers are configuration, not code — free-tier catalogues churn, and
 every one of these defaults will eventually go stale.

@@ -6,8 +6,8 @@ retrying transient failures within a provider before moving to the next one.
 
 All three vendors expose an OpenAI-compatible ``/chat/completions`` endpoint,
 so a single request/response shape covers them. That is a deliberate design
-choice: one code path, no per-vendor SDK, and adding a fourth provider is a
-five-line config entry.
+choice: one code path, no per-vendor SDK, and adding a provider is a
+config entry: NaraRouter was added in nine lines and no new code.
 """
 
 from __future__ import annotations
@@ -121,6 +121,14 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         model_env="REPOMIND_GROQ_MODEL",
         docs_url="https://console.groq.com",
     ),
+    "nararouter": ProviderConfig(
+        name="nararouter",
+        base_url="https://router.bynara.id/v1",
+        api_key_env="NARAROUTER_API_KEY",
+        default_model="laguna-s-2.1",
+        model_env="REPOMIND_NARAROUTER_MODEL",
+        docs_url="https://router.bynara.id",
+    ),
     "gemini": ProviderConfig(
         name="gemini",
         # Google ships an OpenAI-compatible shim, which lets us reuse one client.
@@ -144,7 +152,7 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
     ),
 }
 
-DEFAULT_ORDER: tuple[str, ...] = ("groq", "gemini", "openrouter")
+DEFAULT_ORDER: tuple[str, ...] = ("groq", "nararouter", "gemini", "openrouter")
 
 # Providers say how long to wait, in a header or in the error text. Groq's free
 # tier answers "Please try again in 3.53s"; obeying that instead of guessing

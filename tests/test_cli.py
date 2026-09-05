@@ -12,8 +12,15 @@ runner = CliRunner()
 
 @pytest.fixture
 def no_keys(monkeypatch):
-    for var in ("GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
-        monkeypatch.setenv(var, "")
+    """Clear every provider key, derived from the config rather than listed.
+
+    An earlier version named three environment variables; adding a fourth
+    provider left its key set, so "no providers configured" quietly became false.
+    """
+    from repomind.agent.providers import PROVIDER_CONFIGS
+
+    for config in PROVIDER_CONFIGS.values():
+        monkeypatch.setenv(config.api_key_env, "")
 
 
 def test_version_prints_and_exits_zero():
