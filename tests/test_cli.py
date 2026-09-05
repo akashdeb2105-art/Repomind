@@ -87,3 +87,30 @@ def test_serve_writes_nothing_to_stdout(sample_repo, monkeypatch):
     assert result.exit_code == 0
     assert started["transport"] == "stdio"
     assert result.stdout == "", f"stdout must stay clean, got {result.stdout!r}"
+
+
+def test_serve_rejects_an_unknown_transport(sample_repo):
+    result = runner.invoke(app, ["serve", str(sample_repo.root), "--transport", "carrier-pigeon"])
+
+    assert result.exit_code != 0
+
+
+def test_serve_http_passes_host_and_port_to_the_transport(sample_repo, monkeypatch):
+    """host/port are transport kwargs in SDK 2.x, not attributes on the server."""
+    captured: dict[str, object] = {}
+
+    class FakeServer:
+        def run(self, transport: str, **kwargs: object) -> None:
+            captured["transport"] = transport
+            captured.update(kwargs)
+
+    monkeypatch.setattr("repomind.mcp_server.build_server", lambda ctx: FakeServer())
+
+    result = runner.invoke(
+        app, ["serve", str(sample_repo.root), "--transport", "http", "--port", "9999"]
+    )
+
+    assert result.exit_code == 0
+    assert captured["transport"] == "streamable-http"
+    assert captured["port"] == 9999
+    assert "127.0.0.1" in str(captured["host"]), "must bind to loopback, not 0.0.0.0"

@@ -52,7 +52,17 @@ Then add this to your MCP config (`claude_desktop_config.json` on Windows at
 }
 ```
 
-Restart Claude Desktop and ask it something about that repository. It gets eight
+Restart Claude Desktop and ask it something about that repository.
+
+Some clients take a URL rather than a command. For those, run the server over
+HTTP and add `http://127.0.0.1:8765/mcp` as a custom connector:
+
+```bash
+repomind serve . --transport http --port 8765
+```
+
+It binds to loopback only — the tools are read-only, but they are not
+authenticated, so this is a local development transport, not a public one. It gets eight
 read-only tools: directory listing, file reading, code search, git history and
 blame, dependency parsing, README, and a sandboxed test runner.
 

@@ -232,15 +232,49 @@ def check() -> None:
 @app.command()
 def serve(
     repo: Annotated[str, typer.Argument(help="Repository to serve tools over")] = ".",
+    transport: Annotated[
+        str,
+        typer.Option(
+            "--transport",
+            "-t",
+            help="stdio (a client launches the process) or http (a client connects to a URL)",
+        ),
+    ] = "stdio",
+    port: Annotated[int, typer.Option(help="Port for --transport http")] = 8765,
 ) -> None:
-    """Run the MCP server over stdio, for Claude Desktop or Claude Code."""
+    """Run the MCP server, over stdio or streamable HTTP.
+
+    stdio is what Claude Desktop's config file launches. http suits clients that
+    take a URL instead of a command, and is how a remotely hosted MCP server
+    would be reached.
+    """
     from repomind.mcp_server import build_server
 
+    if transport not in ("stdio", "http"):
+        raise typer.BadParameter("transport must be 'stdio' or 'http'")
+
     context = RepoContext.create(repo)
-    # Anything written to stdout here corrupts the JSON-RPC stream the client
+    server = build_server(context)
+
+    if transport == "http":
+        url = f"http://127.0.0.1:{port}/mcp"
+        console.print(f"[bold]repomind mcp server[/bold] — {context.root}")
+        console.print(f"[green]listening:[/green] {url}")
+        console.print("[dim]add that URL as a custom connector; Ctrl+C to stop[/dim]")
+        # host/port are transport kwargs in SDK 2.x, not server settings.
+        try:
+            server.run(transport="streamable-http", host="127.0.0.1", port=port)
+        except TypeError:
+            # SDK 1.x kept them on .settings instead.
+            server.settings.host = "127.0.0.1"  # type: ignore[attr-defined]
+            server.settings.port = port  # type: ignore[attr-defined]
+            server.run(transport="streamable-http")
+        return
+
+    # stdio: anything written to stdout corrupts the JSON-RPC stream the client
     # is reading, so every human-readable byte goes to stderr instead.
     err_console.print(f"[dim]repomind mcp server — {context.root}[/dim]")
-    build_server(context).run(transport="stdio")
+    server.run(transport="stdio")
 
 
 @app.command()
