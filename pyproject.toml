@@ -38,7 +38,11 @@ agent = [
 ]
 mcp = ["mcp>=1.2"]  # works with SDK 1.x (FastMCP) and 2.x (MCPServer)
 all = ["repomind[agent,mcp]"]
+# The suite exercises the CLI and the MCP server, so it needs their extras.
+# Leaving that implicit is how CI went red for three pushes while every local
+# run passed: the working venv had everything installed, CI had only this list.
 dev = [
+  "repomind[agent,mcp]",
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
   "respx>=0.21",
