@@ -144,13 +144,14 @@ limits or errors. All three are free tiers requiring no credit card.
 | 1 | Groq | `openai/gpt-oss-120b` | [console.groq.com](https://console.groq.com) |
 | 2 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
 | 3 | NaraRouter | `laguna-s-2.1` | [router.bynara.id](https://router.bynara.id) |
-| 4 | OpenRouter | `z-ai/glm-5.2:free` | [openrouter.ai](https://openrouter.ai) |
+| 4 | OpenRouter | `nvidia/nemotron-3.5-lightning:free` | [openrouter.ai](https://openrouter.ai) |
 
 Order is by measured latency (`repomind check`: 0.9s / 1.3s / 3.6s), not by
 preference. The OpenRouter model is chosen for a *different upstream* rather
-than for quality — its `gemma-4` free model is served by Google AI Studio, the
-same backend as the Gemini entry, and two links in a fallback chain that share a
-provider fail together. NaraRouter additionally requires binding a Telegram
+than for quality — the obvious `gemma-4` free model is served by Google AI
+Studio, the same backend as the Gemini entry, and two links in a fallback chain
+that share a provider fail together. Nemotron runs on NVIDIA's own endpoint and
+is faster besides (1.32s median, 1M context). NaraRouter additionally requires binding a Telegram
 account before its free tier will answer, which is worth knowing before you
 depend on it.
 
@@ -162,8 +163,11 @@ every one of these defaults will eventually go stale.
 `python scripts/list_models.py` asks each provider what it currently offers;
 override in `.env` rather than editing source.
 
-Note: on Google's free tier, prompts may be used to improve their models. RepoMind
-only ever sends public open-source code, but it is worth knowing.
+Two free tiers log traffic to improve their own products: Google's, and NVIDIA's
+free endpoint reached through OpenRouter. RepoMind only ever sends public
+open-source code, so this costs nothing here — but anyone pointing it at a
+private repository should read those terms first, and can drop either provider
+from `REPOMIND_PROVIDER_ORDER` without touching code.
 
 ## Design decisions & trade-offs
 

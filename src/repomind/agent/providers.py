@@ -142,12 +142,19 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="openrouter",
         base_url="https://openrouter.ai/api/v1",
         api_key_env="OPENROUTER_API_KEY",
-        default_model="z-ai/glm-5.2:free",
+        default_model="nvidia/nemotron-3.5-lightning:free",
         model_env="REPOMIND_OPENROUTER_MODEL",
         docs_url="https://openrouter.ai",
-        # Chosen for a different upstream, not for quality: gemma-4 :free is
-        # served by Google AI Studio, the same backend as the gemini entry
-        # above. A chain whose last two links share a provider fails together.
+        # Chosen for upstream diversity first: this model is served by NVIDIA,
+        # while gemma-4 :free -- the obvious pick -- is served by Google AI
+        # Studio, the same backend as the gemini entry above. A chain whose
+        # links share a provider fails together, however many links it has.
+        # It is also the faster option: 1.32s median against gemma's shared
+        # pool, with 1M context and 99.88% published uptime.
+        #
+        # Note NVIDIA logs free-endpoint traffic to improve their products.
+        # RepoMind only ever sends public open-source code, but users mirroring
+        # this setup on private repositories should know before they do.
         extra_headers={
             "HTTP-Referer": "https://github.com/akashdeb2105-art/Repomind",
             "X-Title": "RepoMind",
