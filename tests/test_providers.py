@@ -181,3 +181,70 @@ def test_unknown_provider_name_is_rejected():
 def test_provider_order_can_be_set_by_env(monkeypatch, all_keys):
     monkeypatch.setenv("REPOMIND_PROVIDER_ORDER", "openrouter,groq")
     assert [p.name for p in LLMRouter().providers] == ["openrouter", "groq"]
+
+
+# --------------------------------------------------------------------------- #
+# Retry-After: providers tell us how long to wait, so wait that long
+# --------------------------------------------------------------------------- #
+
+
+def test_retry_after_is_read_from_the_header(all_keys):
+    with respx.mock:
+        respx.post(_route("groq")).mock(
+            return_value=httpx.Response(429, text="slow down", headers={"retry-after": "4"})
+        )
+        with pytest.raises(ProviderError) as exc:
+            Provider(PROVIDER_CONFIGS["groq"]).complete(MESSAGES)
+
+    assert exc.value.retry_after_s == 4.0
+
+
+def test_retry_after_is_parsed_from_groq_error_text(all_keys):
+    """Groq's free tier states the wait in the body, not a header."""
+    body = (
+        '{"error":{"message":"Rate limit reached for model `openai/gpt-oss-120b` on tokens '
+        "per minute (TPM): Limit 8000, Used 6578, Requested 2211. Please try again in 5.9175s."
+        '","code":"rate_limit_exceeded"}}'
+    )
+    with respx.mock:
+        respx.post(_route("groq")).mock(return_value=httpx.Response(429, text=body))
+        with pytest.raises(ProviderError) as exc:
+            Provider(PROVIDER_CONFIGS["groq"]).complete(MESSAGES)
+
+    assert exc.value.retry_after_s == pytest.approx(5.9175)
+
+
+def test_a_short_rate_limit_is_waited_out_on_the_same_provider(all_keys, monkeypatch):
+    slept: list[float] = []
+    monkeypatch.setattr("repomind.agent.providers.time.sleep", slept.append)
+
+    with respx.mock:
+        respx.post(_route("groq")).mock(
+            side_effect=[
+                httpx.Response(429, text="Please try again in 2.5s"),
+                httpx.Response(200, json=_chat_payload("recovered")),
+            ]
+        )
+        reply = LLMRouter().complete(MESSAGES)
+
+    assert reply.provider == "groq", "a 2.5s wait is cheaper than failing over"
+    assert slept and 2.0 < slept[0] < 4.0, f"should wait about as long as asked, got {slept}"
+
+
+def test_a_long_rate_limit_fails_over_immediately(all_keys, monkeypatch):
+    """Waiting 40 seconds on the primary is worse than using the secondary now."""
+    slept: list[float] = []
+    monkeypatch.setattr("repomind.agent.providers.time.sleep", slept.append)
+
+    with respx.mock:
+        groq = respx.post(_route("groq")).mock(
+            return_value=httpx.Response(429, text="Please try again in 39.9s")
+        )
+        respx.post(_route("gemini")).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from gemini"))
+        )
+        reply = LLMRouter().complete(MESSAGES)
+
+    assert reply.provider == "gemini"
+    assert groq.call_count == 1, "no point retrying a limit we refuse to wait out"
+    assert slept == [], "and no sleeping before failing over"

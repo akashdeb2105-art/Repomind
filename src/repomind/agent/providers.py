@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import random
+import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -48,11 +49,15 @@ class ProviderError(RuntimeError):
         *,
         retryable: bool = False,
         status_code: int | None = None,
+        retry_after_s: float | None = None,
     ) -> None:
         super().__init__(f"[{provider}] {message}")
         self.provider = provider
         self.retryable = retryable
         self.status_code = status_code
+        # How long the provider itself said to wait. Guessing when we have been
+        # told is how a free tier turns every rate limit into a failover.
+        self.retry_after_s = retry_after_s
 
 
 class AllProvidersFailed(RuntimeError):
@@ -140,6 +145,28 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
 }
 
 DEFAULT_ORDER: tuple[str, ...] = ("groq", "gemini", "openrouter")
+
+# Providers say how long to wait, in a header or in the error text. Groq's free
+# tier answers "Please try again in 3.53s"; obeying that instead of guessing
+# turns most rate limits into a short pause rather than a failover.
+_RETRY_AFTER_TEXT = re.compile(r"try again in\s+([\d.]+)\s*s", re.IGNORECASE)
+MAX_HONOURED_WAIT_S = 15.0
+
+
+def _parse_retry_after(response: httpx.Response) -> float | None:
+    header = response.headers.get("retry-after")
+    if header:
+        try:
+            return float(header)
+        except ValueError:
+            pass
+    match = _RETRY_AFTER_TEXT.search(response.text[:1000])
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -242,7 +269,11 @@ class Provider:
         body = response.text[:400]
         if response.status_code == 429:
             raise ProviderError(
-                self.name, f"rate limited (429): {body}", retryable=True, status_code=429
+                self.name,
+                f"rate limited (429): {body}",
+                retryable=True,
+                status_code=429,
+                retry_after_s=_parse_retry_after(response),
             )
         if response.status_code >= 500:
             raise ProviderError(
@@ -356,12 +387,13 @@ class LLMRouter:
                     result = provider.complete(messages, **kwargs)
                 except ProviderError as exc:
                     failures[provider.name] = str(exc)
-                    if not exc.retryable or attempt == self.max_attempts_per_provider:
+                    too_long = (exc.retry_after_s or 0) > MAX_HONOURED_WAIT_S
+                    if not exc.retryable or too_long or attempt == self.max_attempts_per_provider:
                         logger.warning(
                             "provider %s failed (%s), falling through", provider.name, exc
                         )
                         break
-                    delay = self._backoff(attempt)
+                    delay = self._delay_for(exc, attempt)
                     logger.info(
                         "provider %s attempt %d/%d failed (%s); retrying in %.1fs",
                         provider.name,
@@ -377,6 +409,18 @@ class LLMRouter:
                     return result
 
         raise AllProvidersFailed(failures)
+
+    def _delay_for(self, error: ProviderError, attempt: int) -> float:
+        """Wait as long as the provider asked, when it asked and the wait is short.
+
+        A 3-second rate limit is worth waiting out on the primary; a 40-second
+        one is not, so that falls through to the next provider immediately.
+        """
+        if error.retry_after_s is not None:
+            if error.retry_after_s > MAX_HONOURED_WAIT_S:
+                return 0.0  # too long to wait: fail over now
+            return error.retry_after_s + 0.25  # small cushion for clock skew
+        return self._backoff(attempt)
 
     def _backoff(self, attempt: int) -> float:
         """Exponential backoff with jitter, so parallel runs don't retry in lockstep."""
