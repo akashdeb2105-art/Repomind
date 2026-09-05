@@ -28,10 +28,10 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Lint
-        run: ruff check src tests scripts
+        run: ruff check src tests scripts eval
 
       - name: Format check
-        run: ruff format --check src tests scripts
+        run: ruff format --check src tests scripts eval
 
       - name: Test
         # No API keys in CI on purpose: every test mocks HTTP, so the suite

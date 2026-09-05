@@ -170,3 +170,14 @@ def test_llm_critic_findings_are_added_to_the_report(sample_repo: RepoContext):
     _, state = run(sample_repo, HONEST_DRAFT, claims=extra)
 
     assert any(c.target == "redis" for c in state["critic_report"].claims)
+
+
+def test_a_null_document_from_the_model_does_not_crash_the_run(sample_repo: RepoContext):
+    """A benchmark repo died on 'NoneType has no attribute splitlines'."""
+    payload = {"onboarding_md": None, "architecture_md": "# Arch\n"}
+
+    _, state = run(sample_repo, payload)
+
+    assert state["verified"] is not None, "the other document should still be produced"
+    assert state["verified"].onboarding_md == ""
+    assert "# Arch" in state["verified"].architecture_md

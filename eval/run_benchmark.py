@@ -30,6 +30,7 @@ import shutil
 import subprocess
 import sys
 import time
+import traceback
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -40,12 +41,27 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from pydantic import BaseModel, Field  # noqa: E402  (imports follow sys.path setup)
+
 from repomind.agent.graph import run_pipeline  # noqa: E402
 from repomind.agent.llm import StructuredOutputError, structured_call  # noqa: E402
 from repomind.agent.providers import LLMRouter  # noqa: E402
 from repomind.tools import RepoContext  # noqa: E402
 
-from pydantic import BaseModel, Field  # noqa: E402  (after sys.path setup)
+COLUMNS = (
+    "Repo",
+    "Size",
+    "Lang",
+    "Files",
+    "Read",
+    "Time",
+    "Tokens",
+    "Provider",
+    "Paths verified",
+    "Fabricated",
+    "Accuracy",
+    "Usefulness",
+)
 
 WORKDIR = ROOT / "eval" / "_workdir"
 RESULTS = ROOT / "eval" / "_results"
@@ -99,6 +115,7 @@ class RepoResult:
     usefulness: int | None = None
     judge_comment: str = ""
     error: str = ""
+    traceback: str = ""
     # Per-node warnings from the pipeline. Without these a repo that reads zero
     # files looks identical to one that read eight — the summary line cannot
     # distinguish "nothing to read" from "every read failed".
@@ -119,7 +136,10 @@ def clone(url: str, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         ["git", "clone", "--depth", str(CLONE_DEPTH), "--quiet", url, str(destination)],
-        check=True, capture_output=True, text=True, timeout=CLONE_TIMEOUT_S,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=CLONE_TIMEOUT_S,
     )
 
 
@@ -207,6 +227,11 @@ def benchmark_one(entry: dict, router: LLMRouter, use_judge: bool) -> RepoResult
 
     except Exception as exc:  # noqa: BLE001 - one bad repo must not end the run
         result.error = f"{type(exc).__name__}: {exc}"[:200]
+        # Keep the frames. A one-line message cannot explain a crash six frames
+        # deep, and re-running a 25-minute benchmark to learn where it broke is
+        # not a debugging strategy.
+        result.traceback = traceback.format_exc()[-2000:]
+        print(f"    traceback:\n{result.traceback}")
     finally:
         shutil.rmtree(checkout, ignore_errors=True)
 
@@ -220,6 +245,7 @@ def render_markdown(results: list[RepoResult]) -> str:
     total_grounded = sum(r.grounded for r in ok)
     total_hallucinations = sum(r.hallucinations for r in ok)
     providers = Counter(p for r in ok for p in r.providers)
+    provider_mix = ", ".join(f"{name} x{n}" for name, n in providers.most_common())
 
     lines = [
         "# Benchmarks",
@@ -229,8 +255,8 @@ def render_markdown(results: list[RepoResult]) -> str:
         "",
         "## Results",
         "",
-        "| Repo | Size | Lang | Files | Read | Time | Tokens | Provider | Paths verified | Fabricated | Accuracy | Usefulness |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| " + " | ".join(COLUMNS) + " |",
+        "|" + "---|" * len(COLUMNS),
     ]
     for r in results:
         if r.error:
@@ -252,11 +278,12 @@ def render_markdown(results: list[RepoResult]) -> str:
         "## Totals",
         "",
         f"- Repositories analysed: **{len(ok)}** of {len(results)}",
-        f"- File references checked: **{total_claims}**, verified: **{total_grounded}** ({verified_pct}%)",
+        f"- File references checked: **{total_claims}**, "
+        f"verified: **{total_grounded}** ({verified_pct}%)",
         f"- Fabricated paths caught and removed: **{total_hallucinations}**",
         f"- Tokens used: **{total_tokens:,}**",
-        f"- Cost: **$0.00** (free tiers only)",
-        f"- Provider mix: {', '.join(f'{name} ×{n}' for name, n in providers.most_common()) or '—'}",
+        "- Cost: **$0.00** (free tiers only)",
+        f"- Provider mix: {provider_mix or '—'}",
         "",
         "## How to read this",
         "",
@@ -292,7 +319,9 @@ def main() -> int:
     parser.add_argument("--no-judge", action="store_true", help="skip LLM-as-judge scoring")
     parser.add_argument("--fresh", action="store_true", help="ignore cached results")
     parser.add_argument(
-        "--sleep", type=float, default=20.0,
+        "--sleep",
+        type=float,
+        default=20.0,
         help="pause between repos so free-tier per-minute limits recover",
     )
     args = parser.parse_args()
@@ -344,9 +373,7 @@ def main() -> int:
 
         # Write after every repo: a long benchmark that loses everything to a
         # rate limit at repo 11 is a benchmark nobody runs twice.
-        cache_path.write_text(
-            json.dumps([asdict(r) for r in results], indent=2), encoding="utf-8"
-        )
+        cache_path.write_text(json.dumps([asdict(r) for r in results], indent=2), encoding="utf-8")
         if index < len(entries) and args.sleep:
             time.sleep(args.sleep)
 

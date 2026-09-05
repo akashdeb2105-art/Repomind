@@ -208,8 +208,19 @@ class FileNote(BaseModel):
 
 
 class DocumentDraft(BaseModel):
-    onboarding_md: str
-    architecture_md: str
+    onboarding_md: str = ""
+    architecture_md: str = ""
+
+    @field_validator("onboarding_md", "architecture_md", mode="before")
+    @classmethod
+    def _null_document_is_empty(cls, value: object) -> str:
+        """A model that returns null for one document should not kill the run.
+
+        Same shape as the Claim.target fix: the field is required in spirit, but
+        rejecting null costs three retries and then the whole analysis, when
+        writing the other document would have been useful.
+        """
+        return "" if value is None else str(value)
 
 
 class ClaimKind(str, Enum):  # noqa: UP042

@@ -352,6 +352,7 @@ def apply_corrections(markdown: str, claims: list[Claim]) -> tuple[str, list[str
     fabrication is marked inline, because deleting a sentence mid-paragraph
     reads worse than admitting it could not be verified.
     """
+    markdown = markdown or ""
     bad = [c for c in claims if not c.grounded]
     if not bad:
         return markdown, [], []
