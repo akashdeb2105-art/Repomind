@@ -199,17 +199,22 @@ def ask(
 @app.command()
 def check() -> None:
     """Check that the free-tier providers answer, and that fallback works."""
-    table = Table("provider", "model", "status", "latency", box=None)
+    # Ordered as the router tries them, not as the config happens to be
+    # written. This command exists to show the chain; printing it in a
+    # different order than the router uses is the one thing it must not do.
+    table = Table("#", "provider", "model", "status", "latency", box=None)
     working: list[str] = []
     # Collected and printed in full below the table. A provider error is the
     # whole reason to run this command, and 40 characters of it says nothing —
     # "request rejected (403): {\"e" is not a diagnosis.
     failures: list[str] = []
 
-    for name, config in PROVIDER_CONFIGS.items():
-        provider = Provider(config)
+    order = [n for n in LLMRouter().providers]
+    for position, entry in enumerate(order, start=1):
+        name = entry.name
+        provider = Provider(PROVIDER_CONFIGS[name])
         if not provider.available:
-            table.add_row(name, provider.model, "[yellow]no key[/yellow]", "—")
+            table.add_row(str(position), name, provider.model, "[yellow]no key[/yellow]", "—")
             continue
         try:
             reply = provider.complete(
@@ -217,10 +222,10 @@ def check() -> None:
             )
         except Exception as exc:  # noqa: BLE001 - report every failure shape the same way
             failures.append(f"{name}: {exc}")
-            table.add_row(name, provider.model, "[red]failed[/red]", "—")
+            table.add_row(str(position), name, provider.model, "[red]failed[/red]", "—")
         else:
             status = "[green]ok[/green]" if reply.text else "[red]empty reply[/red]"
-            table.add_row(name, provider.model, status, f"{reply.latency_s}s")
+            table.add_row(str(position), name, provider.model, status, f"{reply.latency_s}s")
             if reply.text:
                 working.append(name)
 

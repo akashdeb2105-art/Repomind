@@ -154,8 +154,8 @@ obvious model choices were rejected for exactly that reason — OpenRouter's
 `nemotron:free` by NVIDIA (same as entry 3), so the last link uses MiniMax on
 GMICloud instead.
 
-Order is by measured latency (`repomind check`: 1.07s / 1.23s / ~1.3s / 6.06s /
-7.95s), not by preference — NaraRouter went in at position 2 on reasoning and
+Order is by measured latency (`repomind check`: 0.9s / 1.1s / 3.3s / 3.4s /
+5.5s), not by preference — NaraRouter went in at position 2 on reasoning and
 ended up last once timed.
 
 Model choice is constrained by more than capability. NVIDIA's
