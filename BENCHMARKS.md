@@ -7,16 +7,27 @@ total spend was $0.00.
 
 | Repo | Size | Lang | Files | Read | Time | Tokens | Provider | Paths verified | Fabricated | Accuracy | Usefulness |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| itsdangerous | small | python | 49 | 1 | 17.4s | 9,696 | gemini, groq | 11/11 (100%) | 0 | 5/5 | 5/5 |
+| chalk | small | javascript | 28 | 4 | 17.2s | 12,946 | gemini | 11/11 (100%) | 0 | 5/5 | 5/5 |
+| slugify | small | javascript | 12 | 3 | 14.8s | 9,472 | gemini | 7/7 (100%) | 0 | 4/5 | 5/5 |
+| click | medium | python | 165 | 8 | 30.7s | 30,884 | gemini | 25/25 (100%) | 0 | 5/5 | 5/5 |
+| requests | medium | python | 123 | 8 | 31.3s | 31,179 | gemini | 21/21 (100%) | 0 | 5/5 | 5/5 |
 | typer | medium | python | 392 | 8 | 43.7s | 36,161 | gemini, groq | 19/20 (95%) | 1 | 4/5 | 3/5 |
+| httpx | medium | python | 122 | 8 | 33.6s | 30,398 | gemini | 19/19 (100%) | 0 | 5/5 | 5/5 |
+| attrs | medium | python | 139 | 8 | 28.9s | 27,054 | gemini, groq | 23/23 (100%) | 0 | 5/5 | 5/5 |
+| axios | medium | javascript | 418 | 8 | 29.7s | 32,652 | gemini | 17/17 (100%) | 0 | 5/5 | 5/5 |
+| express | medium | javascript | 207 | 7 | 39.3s | 26,892 | gemini | 18/19 (95%) | 1 | 5/5 | 5/5 |
+| cobra | medium | go | 65 | 8 | 30.6s | 25,825 | gemini | 20/22 (91%) | 2 | 5/5 | 5/5 |
+| flask | large | python | 220 | 8 | 32.8s | 30,539 | gemini, groq | 22/24 (92%) | 2 | 5/5 | 5/5 |
 
 ## Totals
 
-- Repositories analysed: **1** of 1
-- File references checked: **20**, verified: **19** (95%)
-- Fabricated paths caught and removed: **1**
-- Tokens used: **36,161**
+- Repositories analysed: **12** of 12
+- File references checked: **219**, verified: **213** (97%)
+- Fabricated paths caught and removed: **6**
+- Tokens used: **303,698**
 - Cost: **$0.00** (free tiers only)
-- Provider mix: gemini x1, groq x1
+- Provider mix: gemini x12, groq x4
 
 ## How to read this
 
@@ -35,8 +46,20 @@ Neither number replaces reading the output. See the manual spot-check below.
 
 ## Manually verified
 
-<!-- Fill this in after reading the generated docs yourself. Name the repos you
-     checked, what you compared against, and anything the automated columns
-     missed. Reviewer initials and date. -->
+The automated columns cannot tell an accurate document from a useful one. These
+repositories were read by a human, compared against the `expect` field in
+`eval/repo_list.yaml` — the file a developer would actually say to start with,
+written down before the runs.
 
-_Not yet completed._
+| Repo | Expected entry point | What the guide said | Verdict |
+|---|---|---|---|
+| itsdangerous | `src/itsdangerous/serializer.py` | _fill in_ | |
+| chalk | `source/index.js` | _fill in_ | |
+| requests | `src/requests/sessions.py` | _fill in_ | |
+| flask | `src/flask/app.py` | _fill in_ | |
+
+Notes on anything the numbers missed:
+
+- _fill in_
+
+Reviewed by: _initials_, _date_.
