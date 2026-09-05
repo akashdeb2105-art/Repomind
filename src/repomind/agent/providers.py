@@ -137,7 +137,7 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="nararouter",
         base_url="https://router.bynara.id/v1",
         api_key_env="NARAROUTER_API_KEY",
-        default_model="laguna-s-2.1",
+        default_model="qwen3.8-27b",
         model_env="REPOMIND_NARAROUTER_MODEL",
         docs_url="https://router.bynara.id",
     ),

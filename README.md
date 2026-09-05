@@ -144,7 +144,7 @@ limits or errors. All three are free tiers requiring no credit card.
 | 1 | Groq | `openai/gpt-oss-120b` | Groq | [console.groq.com](https://console.groq.com) |
 | 2 | Google Gemini | `gemini-3.5-flash-lite` | Google | [aistudio.google.com](https://aistudio.google.com) |
 | 3 | NVIDIA | `deepseek-ai/deepseek-v4-flash-0731` | NVIDIA | [build.nvidia.com](https://build.nvidia.com) |
-| 4 | NaraRouter | `laguna-s-2.1` | Alibaba Cloud | [router.bynara.id](https://router.bynara.id) |
+| 4 | NaraRouter | `qwen3.8-27b` | Alibaba Cloud | [router.bynara.id](https://router.bynara.id) |
 | 5 | OpenRouter | `minimax/minimax-m3:free` | GMICloud | [openrouter.ai](https://openrouter.ai) |
 
 **Five providers, five distinct upstreams.** That column is the point: a chain
