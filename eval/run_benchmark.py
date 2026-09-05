@@ -25,8 +25,11 @@ Run:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -131,17 +134,47 @@ class RepoResult:
         return f"{round(100 * self.grounded / self.path_claims)}%"
 
 
-def clone(url: str, destination: Path) -> None:
-    if destination.exists():
-        shutil.rmtree(destination, ignore_errors=True)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["git", "clone", "--depth", str(CLONE_DEPTH), "--quiet", url, str(destination)],
-        check=True,
+def remove_tree(path: Path) -> None:
+    """Delete a checkout, including files git marked read-only.
+
+    Best effort only. On Windows the indexer and antivirus hold handles on
+    files git has just written, so even after clearing the read-only bit the
+    delete can fail — which is why nothing depends on this succeeding.
+    """
+    if not path.exists():
+        return
+
+    def force_delete(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+
+    try:  # 3.12 renamed the hook; 3.14 no longer accepts the old name.
+        shutil.rmtree(path, onexc=force_delete)
+    except TypeError:  # pragma: no cover - older interpreters
+        shutil.rmtree(path, onerror=force_delete)
+
+
+def clone(url: str, name: str) -> Path:
+    """Clone into a fresh unique directory and return the checkout path.
+
+    Reusing a fixed path per repo made every run depend on the previous run's
+    cleanup having worked. When it did not, `git clone` refused to write into a
+    non-empty directory and exited 128 with nothing on stderr. Cloning
+    somewhere new sidesteps it: cleanup becomes housekeeping rather than a
+    precondition for the next run.
+    """
+    WORKDIR.mkdir(parents=True, exist_ok=True)
+    destination = Path(tempfile.mkdtemp(prefix=f"{name}-", dir=WORKDIR)) / "repo"
+    completed = subprocess.run(
+        ["git", "clone", "--depth", str(CLONE_DEPTH), url, str(destination)],
         capture_output=True,
         text=True,
         timeout=CLONE_TIMEOUT_S,
+        check=False,
     )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr.strip() or f"git exited {completed.returncode}")
+    return destination
 
 
 def judge(router: LLMRouter, readme: str, onboarding: str) -> JudgeScore | None:
@@ -171,12 +204,10 @@ def benchmark_one(entry: dict, router: LLMRouter, use_judge: bool) -> RepoResult
     result = RepoResult(
         name=entry["name"], url=entry["url"], size=entry["size"], language=entry["language"]
     )
-    checkout = WORKDIR / entry["name"]
-
     try:
-        clone(entry["url"], checkout)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        result.error = f"clone failed: {exc}"
+        checkout = clone(entry["url"], entry["name"])
+    except (subprocess.TimeoutExpired, RuntimeError, OSError) as exc:
+        result.error = f"clone failed: {str(exc).strip()[:200]}"
         return result
 
     try:
@@ -234,7 +265,10 @@ def benchmark_one(entry: dict, router: LLMRouter, use_judge: bool) -> RepoResult
         result.traceback = traceback.format_exc()[-2000:]
         print(f"    traceback:\n{result.traceback}")
     finally:
-        shutil.rmtree(checkout, ignore_errors=True)
+        # A leftover checkout costs disk, not correctness: the next run clones
+        # somewhere new regardless.
+        with contextlib.suppress(OSError):
+            remove_tree(checkout.parent)
 
     return result
 
