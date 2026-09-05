@@ -258,7 +258,7 @@ def test_adding_providers_needs_no_code_beyond_their_config(all_keys):
     from repomind.agent.providers import DEFAULT_ORDER
 
     assert {"nararouter", "nvidia"} <= set(PROVIDER_CONFIGS)
-    assert DEFAULT_ORDER == ("groq", "gemini", "nvidia", "nararouter", "openrouter")
+    assert DEFAULT_ORDER == ("groq", "gemini", "nvidia", "openrouter", "nararouter")
 
     target = "nararouter"
     with respx.mock:

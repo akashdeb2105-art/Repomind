@@ -143,9 +143,9 @@ limits or errors. All three are free tiers requiring no credit card.
 |---|---|---|---|---|
 | 1 | Groq | `openai/gpt-oss-120b` | Groq | [console.groq.com](https://console.groq.com) |
 | 2 | Google Gemini | `gemini-3.5-flash-lite` | Google | [aistudio.google.com](https://aistudio.google.com) |
-| 3 | NVIDIA | `deepseek-ai/deepseek-v4-flash-0731` | NVIDIA | [build.nvidia.com](https://build.nvidia.com) |
-| 4 | NaraRouter | `qwen3.8-27b` | Alibaba Cloud | [router.bynara.id](https://router.bynara.id) |
-| 5 | OpenRouter | `minimax/minimax-m3:free` | GMICloud | [openrouter.ai](https://openrouter.ai) |
+| 3 | NVIDIA | `nvidia/nemotron-3.5-lightning-30b-a3b` | NVIDIA | [build.nvidia.com](https://build.nvidia.com) |
+| 4 | OpenRouter | `minimax/minimax-m3:free` | GMICloud | [openrouter.ai](https://openrouter.ai) |
+| 5 | NaraRouter | `qwen3.8-27b` | Alibaba Cloud | [router.bynara.id](https://router.bynara.id) |
 
 **Five providers, five distinct upstreams.** That column is the point: a chain
 whose links share a backend fails together, however many links it has. Two
@@ -154,9 +154,15 @@ obvious model choices were rejected for exactly that reason — OpenRouter's
 `nemotron:free` by NVIDIA (same as entry 3), so the last link uses MiniMax on
 GMICloud instead.
 
-Order is by measured latency where it was measured (`repomind check`), not by
-preference. NaraRouter went in at position 2 on reasoning and moved to 4 once
-timed at 3.6s against Gemini's 1.3s. NaraRouter additionally requires binding a Telegram
+Order is by measured latency (`repomind check`: 1.07s / 1.23s / ~1.3s / 6.06s /
+7.95s), not by preference — NaraRouter went in at position 2 on reasoning and
+ended up last once timed.
+
+Model choice is constrained by more than capability. NVIDIA's
+`deepseek-v4-flash` is the strongest coding model available here and is *not*
+used: NVIDIA serves it with thinking on at high reasoning effort, and it timed
+out on every 60-second call. A fallback link that cannot answer inside a timeout
+provides no fallback. NaraRouter additionally requires binding a Telegram
 account before its free tier will answer, which is worth knowing before you
 depend on it.
 

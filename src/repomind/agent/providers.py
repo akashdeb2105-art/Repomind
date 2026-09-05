@@ -125,11 +125,17 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="nvidia",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key_env="NVIDIA_API_KEY",
-        # Model IDs here are namespaced, and the display name on the catalogue
-        # page is not the slug. Copied from NVIDIA's own code sample rather
-        # than inferred: Groq, Gemini and OpenRouter each cost a debugging
-        # round tonight for exactly that reason.
-        default_model="deepseek-ai/deepseek-v4-flash-0731",
+        # Model IDs are namespaced and the catalogue display name is not the
+        # slug; this one came from GET /v1/models, not a guess.
+        #
+        # deepseek-v4-flash was the first choice -- coding-optimised, 1M
+        # context -- and it timed out at 60s every call. NVIDIA serves it with
+        # thinking enabled at high reasoning effort, so it spends a long time
+        # reasoning before emitting anything. Nemotron-lightning is 30B with 3B
+        # active and answers in about a second, which is what a fallback link
+        # needs to be. Capability is worth nothing here if the call never
+        # returns.
+        default_model="nvidia/nemotron-3.5-lightning-30b-a3b",
         model_env="REPOMIND_NVIDIA_MODEL",
         docs_url="https://build.nvidia.com",
     ),
@@ -169,12 +175,14 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
     ),
 }
 
+# Ordered by measured latency (`repomind check`), not by preference:
+# groq 1.07s, gemini 1.23s, nvidia ~1.3s, openrouter 6.06s, nararouter 7.95s.
 DEFAULT_ORDER: tuple[str, ...] = (
     "groq",
     "gemini",
     "nvidia",
-    "nararouter",
     "openrouter",
+    "nararouter",
 )
 
 # Providers say how long to wait, in a header or in the error text. Groq's free
