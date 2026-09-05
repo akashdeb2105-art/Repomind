@@ -139,19 +139,24 @@ fallback doing its job, on the record.
 Requests go to Groq first and fall through to Gemini, then OpenRouter, on rate
 limits or errors. All three are free tiers requiring no credit card.
 
-| Order | Provider | Default model | Get a key |
-|---|---|---|---|
-| 1 | Groq | `openai/gpt-oss-120b` | [console.groq.com](https://console.groq.com) |
-| 2 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
-| 3 | NaraRouter | `laguna-s-2.1` | [router.bynara.id](https://router.bynara.id) |
-| 4 | OpenRouter | `nvidia/nemotron-3.5-lightning:free` | [openrouter.ai](https://openrouter.ai) |
+| # | Provider | Default model | Upstream | Get a key |
+|---|---|---|---|---|
+| 1 | Groq | `openai/gpt-oss-120b` | Groq | [console.groq.com](https://console.groq.com) |
+| 2 | Google Gemini | `gemini-3.5-flash-lite` | Google | [aistudio.google.com](https://aistudio.google.com) |
+| 3 | NVIDIA | `deepseek-ai/deepseek-v4-flash-0731` | NVIDIA | [build.nvidia.com](https://build.nvidia.com) |
+| 4 | NaraRouter | `laguna-s-2.1` | Alibaba Cloud | [router.bynara.id](https://router.bynara.id) |
+| 5 | OpenRouter | `minimax/minimax-m3:free` | GMICloud | [openrouter.ai](https://openrouter.ai) |
 
-Order is by measured latency (`repomind check`: 0.9s / 1.3s / 3.6s), not by
-preference. The OpenRouter model is chosen for a *different upstream* rather
-than for quality — the obvious `gemma-4` free model is served by Google AI
-Studio, the same backend as the Gemini entry, and two links in a fallback chain
-that share a provider fail together. Nemotron runs on NVIDIA's own endpoint and
-is faster besides (1.32s median, 1M context). NaraRouter additionally requires binding a Telegram
+**Five providers, five distinct upstreams.** That column is the point: a chain
+whose links share a backend fails together, however many links it has. Two
+obvious model choices were rejected for exactly that reason — OpenRouter's
+`gemma-4:free` is served by Google AI Studio (same as entry 2) and its
+`nemotron:free` by NVIDIA (same as entry 3), so the last link uses MiniMax on
+GMICloud instead.
+
+Order is by measured latency where it was measured (`repomind check`), not by
+preference. NaraRouter went in at position 2 on reasoning and moved to 4 once
+timed at 3.6s against Gemini's 1.3s. NaraRouter additionally requires binding a Telegram
 account before its free tier will answer, which is worth knowing before you
 depend on it.
 

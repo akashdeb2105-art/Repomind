@@ -121,6 +121,18 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         model_env="REPOMIND_GROQ_MODEL",
         docs_url="https://console.groq.com",
     ),
+    "nvidia": ProviderConfig(
+        name="nvidia",
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key_env="NVIDIA_API_KEY",
+        # Model IDs here are namespaced, and the display name on the catalogue
+        # page is not the slug. Copied from NVIDIA's own code sample rather
+        # than inferred: Groq, Gemini and OpenRouter each cost a debugging
+        # round tonight for exactly that reason.
+        default_model="deepseek-ai/deepseek-v4-flash-0731",
+        model_env="REPOMIND_NVIDIA_MODEL",
+        docs_url="https://build.nvidia.com",
+    ),
     "nararouter": ProviderConfig(
         name="nararouter",
         base_url="https://router.bynara.id/v1",
@@ -142,19 +154,14 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="openrouter",
         base_url="https://openrouter.ai/api/v1",
         api_key_env="OPENROUTER_API_KEY",
-        default_model="nvidia/nemotron-3.5-lightning:free",
+        default_model="minimax/minimax-m3:free",
         model_env="REPOMIND_OPENROUTER_MODEL",
         docs_url="https://openrouter.ai",
-        # Chosen for upstream diversity first: this model is served by NVIDIA,
-        # while gemma-4 :free -- the obvious pick -- is served by Google AI
-        # Studio, the same backend as the gemini entry above. A chain whose
-        # links share a provider fails together, however many links it has.
-        # It is also the faster option: 1.32s median against gemma's shared
-        # pool, with 1M context and 99.88% published uptime.
-        #
-        # Note NVIDIA logs free-endpoint traffic to improve their products.
-        # RepoMind only ever sends public open-source code, but users mirroring
-        # this setup on private repositories should know before they do.
+        # Last link, and chosen purely so it fails independently of the other
+        # four. minimax-m3:free is served by GMICloud; the obvious picks were
+        # gemma-4 (Google AI Studio, same upstream as the gemini entry) and
+        # nemotron (NVIDIA, same upstream as the nvidia entry). A five-link
+        # chain with two duplicate backends is really a three-link chain.
         extra_headers={
             "HTTP-Referer": "https://github.com/akashdeb2105-art/Repomind",
             "X-Title": "RepoMind",
@@ -162,7 +169,13 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
     ),
 }
 
-DEFAULT_ORDER: tuple[str, ...] = ("groq", "gemini", "nararouter", "openrouter")
+DEFAULT_ORDER: tuple[str, ...] = (
+    "groq",
+    "gemini",
+    "nvidia",
+    "nararouter",
+    "openrouter",
+)
 
 # Providers say how long to wait, in a header or in the error text. Groq's free
 # tier answers "Please try again in 3.53s"; obeying that instead of guessing

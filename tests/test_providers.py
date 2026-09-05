@@ -253,17 +253,18 @@ def test_a_long_rate_limit_fails_over_immediately(all_keys, monkeypatch):
     assert slept == [], "and no sleeping before failing over"
 
 
-def test_a_fourth_provider_needed_no_code_beyond_its_config(all_keys):
+def test_adding_providers_needs_no_code_beyond_their_config(all_keys):
     """The README claims adding a provider is a config entry. This asserts it."""
     from repomind.agent.providers import DEFAULT_ORDER
 
-    assert "nararouter" in PROVIDER_CONFIGS
-    assert DEFAULT_ORDER == ("groq", "gemini", "nararouter", "openrouter")
+    assert {"nararouter", "nvidia"} <= set(PROVIDER_CONFIGS)
+    assert DEFAULT_ORDER == ("groq", "gemini", "nvidia", "nararouter", "openrouter")
 
+    target = "nararouter"
     with respx.mock:
-        for name in DEFAULT_ORDER[:2]:
+        for name in DEFAULT_ORDER[: DEFAULT_ORDER.index(target)]:
             respx.post(_route(name)).mock(return_value=httpx.Response(429, text="limit"))
-        respx.post(_route("nararouter")).mock(
+        respx.post(_route(target)).mock(
             return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
         )
         reply = LLMRouter(max_attempts_per_provider=1, base_backoff=0).complete(MESSAGES)
