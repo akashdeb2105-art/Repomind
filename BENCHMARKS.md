@@ -7,27 +7,16 @@ total spend was $0.00.
 
 | Repo | Size | Lang | Files | Read | Time | Tokens | Provider | Paths verified | Fabricated | Accuracy | Usefulness |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| itsdangerous | small | python | 49 | 7 | 67.4s | 19,720 | gemini, groq | 28/28 (100%) | 0 | —/5 | —/5 |
-| chalk | small | javascript | 28 | 3 | 24.6s | 13,840 | gemini, groq | 15/18 (83%) | 3 | 5/5 | 5/5 |
-| slugify | small | javascript | 12 | 3 | 51.7s | 13,234 | groq | 8/13 (62%) | 5 | 2/5 | 3/5 |
-| click | medium | python | 165 | 8 | 138.6s | 32,575 | gemini, groq | 33/33 (100%) | 0 | 5/5 | 4/5 |
-| requests | medium | python | 123 | 8 | 114.1s | 30,497 | gemini, groq | 25/25 (100%) | 0 | 3/5 | 3/5 |
-| typer | medium | python | — | — | — | — | — | — | — | — | error: AttributeError: 'NoneType' object has no |
-| httpx | medium | python | 122 | 8 | 72.7s | 31,943 | gemini, groq | 20/20 (100%) | 0 | 4/5 | 5/5 |
-| attrs | medium | python | 139 | 8 | 73.0s | 26,882 | gemini, groq | 30/32 (94%) | 2 | 5/5 | 3/5 |
-| axios | medium | javascript | 418 | 8 | 98.6s | 32,012 | gemini, groq | 19/20 (95%) | 1 | 3/5 | 4/5 |
-| express | medium | javascript | 207 | 7 | 71.9s | 26,086 | gemini, groq | 14/19 (74%) | 5 | 3/5 | 3/5 |
-| cobra | medium | go | 65 | 8 | 32.7s | 29,897 | gemini, groq | 16/16 (100%) | 0 | 5/5 | 5/5 |
-| flask | large | python | 220 | 8 | 37.3s | 35,778 | gemini | 16/16 (100%) | 0 | 5/5 | 5/5 |
+| typer | medium | python | — | — | — | — | — | — | — | — | error: clone failed: Command '['git', 'clone',  |
 
 ## Totals
 
-- Repositories analysed: **11** of 12
-- File references checked: **240**, verified: **224** (93%)
-- Fabricated paths caught and removed: **16**
-- Tokens used: **292,464**
+- Repositories analysed: **0** of 1
+- File references checked: **0**, verified: **0** (0%)
+- Fabricated paths caught and removed: **0**
+- Tokens used: **0**
 - Cost: **$0.00** (free tiers only)
-- Provider mix: gemini ×10, groq ×10
+- Provider mix: —
 
 ## How to read this
 
