@@ -36,7 +36,8 @@ agent = [
   "GitPython>=3.1",
   "PyYAML>=6.0",
 ]
-mcp = ["mcp>=1.2"]
+mcp = ["mcp>=1.2"]  # works with SDK 1.x (FastMCP) and 2.x (MCPServer)
+all = ["repomind[agent,mcp]"]
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
@@ -50,6 +51,7 @@ Issues = "https://github.com/akashdeb2105-art/Repomind/issues"
 
 [project.scripts]
 repomind = "repomind.cli:app"
+repomind-mcp = "repomind.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/repomind"]

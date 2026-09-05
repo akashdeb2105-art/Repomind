@@ -30,6 +30,46 @@ pytest                    # offline test suite, no keys needed
 python scripts/check_providers.py   # live check against the free tiers
 ```
 
+## Use it from Claude Desktop or Claude Code
+
+RepoMind ships as an MCP server, so Claude can use its tools directly.
+
+```bash
+pip install -e ".[all]"
+```
+
+Then add this to your MCP config (`claude_desktop_config.json` on Windows at
+`%APPDATA%\Claude\`, on macOS at `~/Library/Application Support/Claude/`):
+
+```json
+{
+  "mcpServers": {
+    "repomind": {
+      "command": "repomind-mcp",
+      "args": ["C:/path/to/the/repository/you/want/to/explore"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop and ask it something about that repository. It gets eight
+read-only tools: directory listing, file reading, code search, git history and
+blame, dependency parsing, README, and a sandboxed test runner.
+
+The repository root is fixed when the server starts, and no tool accepts a root
+argument, so nothing the model reads inside a repository can redirect it
+elsewhere on disk. Credential files are never readable.
+
+## Command line
+
+```bash
+repomind analyze https://github.com/psf/requests   # generate the documents
+repomind ask "how does retry logic work?"          # answer with cited sources
+repomind check                                     # verify the free providers
+repomind tools .                                   # run the tools, no LLM, no key
+repomind serve .                                   # run the MCP server directly
+```
+
 ## Providers
 
 RepoMind never depends on one vendor. Requests go to Groq first, and fall

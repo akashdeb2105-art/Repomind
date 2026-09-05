@@ -64,3 +64,26 @@ def test_ask_requires_a_question():
     result = runner.invoke(app, ["ask"])
 
     assert result.exit_code != 0
+
+
+def test_serve_is_registered():
+    result = runner.invoke(app, ["--help"])
+
+    assert "serve" in result.stdout
+
+
+def test_serve_writes_nothing_to_stdout(sample_repo, monkeypatch):
+    """stdout is the MCP transport. A single stray byte corrupts the protocol."""
+    started: dict[str, object] = {}
+
+    class FakeServer:
+        def run(self, transport: str) -> None:
+            started["transport"] = transport
+
+    monkeypatch.setattr("repomind.mcp_server.build_server", lambda ctx: FakeServer())
+
+    result = runner.invoke(app, ["serve", str(sample_repo.root)])
+
+    assert result.exit_code == 0
+    assert started["transport"] == "stdio"
+    assert result.stdout == "", f"stdout must stay clean, got {result.stdout!r}"

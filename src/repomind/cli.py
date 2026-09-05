@@ -39,6 +39,9 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+# stdout is the MCP transport when serving, so status messages need their own
+# stream. Rich has no per-call file argument — it is a property of the Console.
+err_console = Console(stderr=True)
 
 CLONE_TIMEOUT_S = 300.0
 
@@ -224,6 +227,20 @@ def check() -> None:
     console.print(
         f"[green]fallback ok:[/green] forced {working[0]} to fail, answered by {reply.provider}"
     )
+
+
+@app.command()
+def serve(
+    repo: Annotated[str, typer.Argument(help="Repository to serve tools over")] = ".",
+) -> None:
+    """Run the MCP server over stdio, for Claude Desktop or Claude Code."""
+    from repomind.mcp_server import build_server
+
+    context = RepoContext.create(repo)
+    # Anything written to stdout here corrupts the JSON-RPC stream the client
+    # is reading, so every human-readable byte goes to stderr instead.
+    err_console.print(f"[dim]repomind mcp server — {context.root}[/dim]")
+    build_server(context).run(transport="stdio")
 
 
 @app.command()

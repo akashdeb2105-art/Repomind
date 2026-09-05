@@ -39,6 +39,12 @@ class Engine:
 
 
 @pytest.fixture
+def anyio_backend():
+    """MCP's server API is async; asyncio only, no trio dependency."""
+    return "asyncio"
+
+
+@pytest.fixture
 def sample_repo(tmp_path: Path) -> RepoContext:
     """A repo with source, tests, manifests, noise directories and a binary."""
     (tmp_path / "src" / "sample").mkdir(parents=True)
