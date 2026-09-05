@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "repomind"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "An MCP server + LangGraph agent that makes any GitHub repo self-explaining."
 readme = "README.md"
 license = { file = "LICENSE" }
