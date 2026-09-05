@@ -142,9 +142,12 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         name="openrouter",
         base_url="https://openrouter.ai/api/v1",
         api_key_env="OPENROUTER_API_KEY",
-        default_model="google/gemma-4-31b-it:free",
+        default_model="z-ai/glm-5.2:free",
         model_env="REPOMIND_OPENROUTER_MODEL",
         docs_url="https://openrouter.ai",
+        # Chosen for a different upstream, not for quality: gemma-4 :free is
+        # served by Google AI Studio, the same backend as the gemini entry
+        # above. A chain whose last two links share a provider fails together.
         extra_headers={
             "HTTP-Referer": "https://github.com/akashdeb2105-art/Repomind",
             "X-Title": "RepoMind",
@@ -152,7 +155,7 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
     ),
 }
 
-DEFAULT_ORDER: tuple[str, ...] = ("groq", "nararouter", "gemini", "openrouter")
+DEFAULT_ORDER: tuple[str, ...] = ("groq", "gemini", "nararouter", "openrouter")
 
 # Providers say how long to wait, in a header or in the error text. Groq's free
 # tier answers "Please try again in 3.53s"; obeying that instead of guessing

@@ -157,12 +157,12 @@ def test_force_fail_proves_the_fallback_drill(all_keys):
         groq = respx.post(_route("groq")).mock(
             return_value=httpx.Response(200, json=_chat_payload("x"))
         )
-        respx.post(_route("nararouter")).mock(
-            return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
+        respx.post(_route(DEFAULT_ORDER[1])).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from the fallback"))
         )
         reply = LLMRouter(base_backoff=0, force_fail={"groq"}).complete(MESSAGES)
 
-    assert reply.provider == "nararouter", "the drill lands on whoever is next in the chain"
+    assert reply.provider == DEFAULT_ORDER[1], "the drill lands on whoever is next in the chain"
     assert groq.call_count == 0
 
 
@@ -243,12 +243,12 @@ def test_a_long_rate_limit_fails_over_immediately(all_keys, monkeypatch):
         groq = respx.post(_route("groq")).mock(
             return_value=httpx.Response(429, text="Please try again in 39.9s")
         )
-        respx.post(_route("nararouter")).mock(
-            return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
+        respx.post(_route(DEFAULT_ORDER[1])).mock(
+            return_value=httpx.Response(200, json=_chat_payload("from the fallback"))
         )
         reply = LLMRouter().complete(MESSAGES)
 
-    assert reply.provider == "nararouter"
+    assert reply.provider == DEFAULT_ORDER[1]
     assert groq.call_count == 1, "no point retrying a limit we refuse to wait out"
     assert slept == [], "and no sleeping before failing over"
 
@@ -258,21 +258,22 @@ def test_a_fourth_provider_needed_no_code_beyond_its_config(all_keys):
     from repomind.agent.providers import DEFAULT_ORDER
 
     assert "nararouter" in PROVIDER_CONFIGS
-    assert DEFAULT_ORDER == ("groq", "nararouter", "gemini", "openrouter")
+    assert DEFAULT_ORDER == ("groq", "gemini", "nararouter", "openrouter")
 
     with respx.mock:
-        respx.post(_route("groq")).mock(return_value=httpx.Response(429, text="limit"))
+        for name in DEFAULT_ORDER[:2]:
+            respx.post(_route(name)).mock(return_value=httpx.Response(429, text="limit"))
         respx.post(_route("nararouter")).mock(
             return_value=httpx.Response(200, json=_chat_payload("from nararouter"))
         )
         reply = LLMRouter(max_attempts_per_provider=1, base_backoff=0).complete(MESSAGES)
 
-    assert reply.provider == "nararouter"
+    assert reply.provider == "nararouter", "reachable wherever it sits in the chain"
 
 
 def test_the_chain_still_reaches_the_end_when_three_providers_fail(all_keys):
     with respx.mock:
-        for name in ("groq", "nararouter", "gemini"):
+        for name in DEFAULT_ORDER[:-1]:
             respx.post(_route(name)).mock(return_value=httpx.Response(503, text="down"))
         respx.post(_route("openrouter")).mock(
             return_value=httpx.Response(200, json=_chat_payload("last resort"))

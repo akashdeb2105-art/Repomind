@@ -142,9 +142,17 @@ limits or errors. All three are free tiers requiring no credit card.
 | Order | Provider | Default model | Get a key |
 |---|---|---|---|
 | 1 | Groq | `openai/gpt-oss-120b` | [console.groq.com](https://console.groq.com) |
-| 2 | NaraRouter | `laguna-s-2.1` | [router.bynara.id](https://router.bynara.id) |
-| 3 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
-| 4 | OpenRouter | `google/gemma-4-31b-it:free` | [openrouter.ai](https://openrouter.ai) |
+| 2 | Google Gemini | `gemini-3.5-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
+| 3 | NaraRouter | `laguna-s-2.1` | [router.bynara.id](https://router.bynara.id) |
+| 4 | OpenRouter | `z-ai/glm-5.2:free` | [openrouter.ai](https://openrouter.ai) |
+
+Order is by measured latency (`repomind check`: 0.9s / 1.3s / 3.6s), not by
+preference. The OpenRouter model is chosen for a *different upstream* rather
+than for quality — its `gemma-4` free model is served by Google AI Studio, the
+same backend as the Gemini entry, and two links in a fallback chain that share a
+provider fail together. NaraRouter additionally requires binding a Telegram
+account before its free tier will answer, which is worth knowing before you
+depend on it.
 
 Any provider whose key is absent is skipped rather than treated as an error, so
 a working install needs only one of them.
