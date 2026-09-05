@@ -7,16 +7,16 @@ total spend was $0.00.
 
 | Repo | Size | Lang | Files | Read | Time | Tokens | Provider | Paths verified | Fabricated | Accuracy | Usefulness |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| typer | medium | python | — | — | — | — | — | — | — | — | error: AttributeError: 'NoneType' object has no |
+| typer | medium | python | 392 | 8 | 43.7s | 36,161 | gemini, groq | 19/20 (95%) | 1 | 4/5 | 3/5 |
 
 ## Totals
 
-- Repositories analysed: **0** of 1
-- File references checked: **0**, verified: **0** (0%)
-- Fabricated paths caught and removed: **0**
-- Tokens used: **0**
+- Repositories analysed: **1** of 1
+- File references checked: **20**, verified: **19** (95%)
+- Fabricated paths caught and removed: **1**
+- Tokens used: **36,161**
 - Cost: **$0.00** (free tiers only)
-- Provider mix: —
+- Provider mix: gemini x1, groq x1
 
 ## How to read this
 

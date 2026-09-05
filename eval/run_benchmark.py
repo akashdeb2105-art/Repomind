@@ -370,7 +370,8 @@ def main() -> int:
         print("No providers configured. Put API keys in .env.")
         return 1
 
-    entries = yaml.safe_load((ROOT / "eval" / "repo_list.yaml").read_text())["repos"]
+    all_entries = yaml.safe_load((ROOT / "eval" / "repo_list.yaml").read_text())["repos"]
+    entries = list(all_entries)
     if args.only:
         wanted = {n.strip() for n in args.only.split(",")}
         entries = [e for e in entries if e["name"] in wanted]
@@ -379,9 +380,26 @@ def main() -> int:
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     cache_path = RESULTS / "results.json"
-    cached: dict[str, dict] = {}
-    if cache_path.exists() and not args.fresh:
-        cached = {r["name"]: r for r in json.loads(cache_path.read_text())}
+
+    # Every result ever measured, keyed by repo. Loaded even with --fresh:
+    # re-running one repo must not discard the other eleven. An earlier version
+    # rebuilt this file from the current selection alone, and `--only typer
+    # --fresh` erased two hours of measurements.
+    store: dict[str, dict] = {}
+    if cache_path.exists():
+        store = {r["name"]: r for r in json.loads(cache_path.read_text())}
+
+    selected = {e["name"] for e in entries}
+    cached = {} if args.fresh else {k: v for k, v in store.items() if k in selected}
+
+    def persist() -> None:
+        """Write the whole store, ordered by the repo list, after every repo."""
+        order = {e["name"]: i for i, e in enumerate(all_entries)}
+        rows = sorted(store.values(), key=lambda r: order.get(r["name"], 999))
+        cache_path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+        (ROOT / "BENCHMARKS.md").write_text(
+            render_markdown([RepoResult(**r) for r in rows]), encoding="utf-8"
+        )
 
     results: list[RepoResult] = []
     for index, entry in enumerate(entries, start=1):
@@ -409,14 +427,15 @@ def main() -> int:
             for warning in result.pipeline_errors:
                 print(f"    warning: {warning}")
 
-        # Write after every repo: a long benchmark that loses everything to a
+        # Persist after every repo: a long benchmark that loses everything to a
         # rate limit at repo 11 is a benchmark nobody runs twice.
-        cache_path.write_text(json.dumps([asdict(r) for r in results], indent=2), encoding="utf-8")
+        store[result.name] = asdict(result)
+        persist()
         if index < len(entries) and args.sleep:
             time.sleep(args.sleep)
 
-    (ROOT / "BENCHMARKS.md").write_text(render_markdown(results), encoding="utf-8")
-    print(f"\nWrote {ROOT / 'BENCHMARKS.md'}")
+    persist()
+    print(f"\nWrote {ROOT / 'BENCHMARKS.md'} ({len(store)} repos on record)")
     print(f"Generated documents are under {RESULTS}")
     return 0
 
